@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 from app.api.v1.endpoints import (
+    ai,
     auth,
     availability,
     health,
@@ -23,3 +24,4 @@ api_router.include_router(tracking.router, prefix="/tracking", tags=["Time Track
 api_router.include_router(planning.router, tags=["Planning"])
 api_router.include_router(today.router, tags=["Today Execution"])
 api_router.include_router(notifications.router, tags=["Notifications"])
+api_router.include_router(ai.router, prefix="/ai", tags=["AI Intelligence"])

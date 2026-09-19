@@ -86,6 +86,14 @@ class MockAIProvider(BaseAIProvider):
 
         # 3. Deadline Detection
         now = datetime.now(timezone.utc)
+        if request.context_date:
+            try:
+                parsed_ctx = datetime.fromisoformat(request.context_date.replace("Z", "+00:00"))
+                if parsed_ctx.tzinfo is None:
+                    parsed_ctx = parsed_ctx.replace(tzinfo=timezone.utc)
+                now = parsed_ctx
+            except Exception:
+                pass
         deadline_dt = None
         if "tomorrow" in lower:
             deadline_dt = (now + timedelta(days=1)).replace(hour=18, minute=0, second=0, microsecond=0)

@@ -46,3 +46,8 @@ async def get_current_user(
         )
 
     return user
+
+
+def get_ai_service(db: AsyncSession = Depends(get_db)):
+    from app.services.ai.ai_service import AIService
+    return AIService(db=db)
