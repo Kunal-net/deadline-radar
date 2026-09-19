@@ -1,177 +1,196 @@
 # Frontend Specification — Deadline Radar
 
-## Design Philosophy & Anti-Patterns
-Deadline Radar is an operational, high-signal productivity tool for students and young professionals. Every screen must prioritize **clarity, urgency awareness, and low cognitive friction**.
+## 1. Product Identity & Design Philosophy
 
-### What This Frontend IS:
-- Clean, deliberate, structured information hierarchy.
-- Purposeful use of color to communicate urgency (e.g. red for <24h, amber for <3d, subtle slate for future dates).
-- Highly readable typography optimized for scanning dates, requirements, and statuses.
-- Fast, accessible, and responsive.
+Deadline Radar is an AI-powered personalized deadline monitoring and time-management operational command center. Its primary purpose is to help the user answer with absolute clarity:
 
-### What This Frontend MUST AVOID (AI-Generated Cliché Anti-Patterns):
-- ❌ No excessive glowing gradients or neon purple backgrounds.
-- ❌ No gratuitous glassmorphism or blurred backdrop cards that hurt contrast.
-- ❌ No random cards floating without structural grid alignment.
-- ❌ No excessive pill/border-radius on everything (`rounded-3xl` everywhere).
-- ❌ No frivolous bouncy animations that delay interactions.
-- ❌ No generic, empty dashboard widgets that take up screen space without delivering value.
+> **What deserves my time right now?**
+
+The frontend architecture prioritizes:
+- **Operational Clarity**: High-signal, low-cognitive-load views presenting workload pressure, risk states, and actionable recommendations.
+- **Empirical Accuracy**: Explicit distinction between user-entered commitments, AI suggestions, system calculations, and observed stopwatch time.
+- **Seamless Work Breakdown & Tracking**: Inline subtask decomposition, interactive stopwatch sessions, and adaptive plan adjustment.
+- **Strict Anti-Patterns**: No generic SaaS dashboard cards, no decorative AI sparkle clutter, no meaningless gamification badges, and no noisy uncalibrated alert dialogs.
 
 ---
 
-## Recommended Frontend Tech Stack
+## 2. Technical Stack Architecture
 
-```text
-TODO — NEEDS DECISION: FRONTEND FRAMEWORK SELECTION
-```
+The frontend client is built as a responsive Single Page Application (SPA):
 
-### Primary Recommendation: **React + Vite + TypeScript**
-- **Why**: Extremely fast build times, lightweight bundle, zero server-side rendering complexity for a personal productivity tool, massive ecosystem, and full control over state and routing.
-- **Routing**: TanStack Router or React Router v6.
-- **Server State & Data Fetching**: TanStack Query (React Query) for caching, background revalidation, and optimistic updates.
-- **Styling**: Tailwind CSS with strict design tokens OR Vanilla CSS Modules.
-- **Icons**: Lucide React (clean, consistent line iconography).
-
-*(Alternative considered: Next.js App Router — suitable if public SEO-driven catalog pages are prioritized later; Vite is currently lighter and faster for development).*
+- **Framework**: **React 18+ with TypeScript** (strict mode enabled).
+- **Build Tool**: **Vite** for rapid HMR and optimized production bundles.
+- **Routing**: **React Router v6+** with lazy-loaded route chunks and protected route guards.
+- **Server State & Caching**: **TanStack Query (React Query v5)** for optimistic UI updates, automated query invalidation, and background synchronization.
+- **Client/Session State**: **Zustand** for lightweight local state (active stopwatch timer, sidebar collapse, draft modal state).
+- **Icons**: **Lucide React** for consistent, minimalist line iconography.
+- **Date & Time Handling**: **date-fns** with UTC standard conversions and user-timezone display formatting.
+- **Form Management**: **React Hook Form + Zod** for schema validation matching backend Pydantic models.
 
 ---
 
-## Design System & Tokens
+## 3. Information Architecture & Route Map
 
-### Color Palette
-A refined, high-contrast, professional palette with deliberate semantic urgency tokens:
-
-```css
-:root {
-  /* Neutral Foundation */
-  --bg-primary: #0F172A;       /* Slate 900: Deep, focused canvas */
-  --bg-surface: #1E293B;       /* Slate 800: Card / container surface */
-  --bg-surface-elevated: #334155; /* Slate 700: Hover / active item */
-  --border-subtle: #334155;    /* Slate 700: Hairline borders */
-  --border-focus: #38BDF8;     /* Sky 400: Focus ring */
-
-  /* Typography Colors */
-  --text-primary: #F8FAFC;     /* Slate 50: High-contrast headings & titles */
-  --text-secondary: #94A3B8;   /* Slate 400: Metadata, labels, captions */
-  --text-muted: #64748B;       /* Slate 500: Timestamps, hints */
-
-  /* Brand & Interactive */
-  --primary: #2563EB;          /* Royal Blue 600: Primary actions */
-  --primary-hover: #1D4ED8;    /* Royal Blue 700 */
-  --accent: #0284C7;           /* Sky 600 */
-
-  /* Semantic Urgency Tiers */
-  --urgency-critical: #EF4444; /* Red 500: Due in <24 hours / Overdue */
-  --urgency-critical-bg: rgba(239, 68, 68, 0.12);
-  --urgency-warning: #F59E0B;  /* Amber 500: Due in <3 days */
-  --urgency-warning-bg: rgba(245, 158, 11, 0.12);
-  --urgency-moderate: #10B981; /* Emerald 500: Due in <7 days */
-  --urgency-moderate-bg: rgba(16, 185, 129, 0.12);
-  --urgency-future: #64748B;   /* Slate 500: >7 days away */
-  --urgency-future-bg: rgba(100, 116, 139, 0.12);
-
-  /* Status Colors */
-  --status-saved: #94A3B8;
-  --status-applied: #38BDF8;
-  --status-interviewing: #A855F7;
-  --status-offered: #22C55E;
-  --status-rejected: #64748B;
-  --status-completed: #10B981;
-}
-```
-
-### Typography
-- **Font Family**: Inter, `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`.
-- **Scale**:
-  - `Display / Page Title`: 24px (1.5rem), font-weight 700, line-height 1.2.
-  - `Section Heading`: 18px (1.125rem), font-weight 600, line-height 1.3.
-  - `Card Title`: 16px (1.0rem), font-weight 600, line-height 1.4.
-  - `Body Text`: 14px (0.875rem), font-weight 400, line-height 1.5.
-  - `Metadata / Badges`: 12px (0.75rem), font-weight 500, letter-spacing 0.02em.
-  - `Code / Date Badges`: Monospace (`ui-monospace, "SF Mono", monospace`), font-weight 600.
-
-### Spacing & Grid System
-- 4px baseline grid (`4px`, `8px`, `12px`, `16px`, `24px`, `32px`, `48px`).
-- Consistent container max-width: `1200px` centered with responsive horizontal gutters (`16px` mobile, `32px` desktop).
-- Card border-radius: `8px` (`rounded-lg`). Avoid oversized bubble corners.
+| Path | Screen Name | Layout / Access | Purpose & Core Content |
+| :--- | :--- | :--- | :--- |
+| `/` | **Landing Page** | Public Layout | Visual editorial introduction to Deadline Radar, core loop, problem visualization, CTA. |
+| `/login` | **Sign In** | Minimal Auth | Email/password authentication, error banners, password recovery link. |
+| `/register` | **Sign Up** | Minimal Auth | Account registration, timezone detection, password validation. |
+| `/onboarding` | **Onboarding Wizard** | Focused Flow | 5-step setup: study/work context, weekly available hours, protected interests, working preferences. |
+| `/today` | **Today View** | App Shell (Protected) | **Core operational view**: Active stopwatch session, NOW/NEXT recommendations, Today's timeline schedule. |
+| `/dashboard` | **Radar Dashboard** | App Shell (Protected) | High-level operational overview: Risk states radar, approaching deadlines, workload vs. capacity alerts. |
+| `/work` | **Work Items List** | App Shell (Protected) | Master view of all work items, category tabs, risk filters, sorting by dynamic priority, bulk actions. |
+| `/work/new` | **Add Work Modal / Drawer** | App Overlay | Create work item, optional natural-language input, AI decomposition preview and editing drawer. |
+| `/work/:id` | **Work Detail** | App Shell (Protected) | Deep dive into a single work item: subtasks checklist, effort estimates, risk breakdown, logged time entries. |
+| `/timeline` | **Timeline Projection** | App Shell (Protected) | Gantt-style forward projection showing work durations mapped against suitable working capacity windows. |
+| `/calendar` | **Calendar View** | App Shell (Protected) | Day and Week calendar grids integrating schedule blackout blocks, planned time slots, and tracked sessions. |
+| `/workload` | **Workload & Capacity** | App Shell (Protected) | Analytical bar visualization comparing user available hours vs estimated demand by day and week. |
+| `/priorities` | **Dynamic Priorities** | App Shell (Protected) | Ranked list of work items sorted by dynamic priority score with transparent AI/system explanations. |
+| `/planning` | **Adaptive Daily Planner** | App Shell (Protected) | Daily time allocation generator, drag-and-drop plan item reordering, commitment and interest buffers. |
+| `/insights` | **Personal Insights** | App Shell (Protected) | Historical learning metrics: category pace factors, predicted vs actual accuracy curves, logged time. |
+| `/notifications` | **Notifications Center** | App Shell (Protected) | Proximity alerts, risk escalation notices, capacity overload warnings, and read/dismiss controls. |
+| `/profile` | **Profile & Preferences** | App Shell (Protected) | Account details, working habits, buffer percentages, weekly recurring availability templates. |
+| `/settings` | **Settings** | App Shell (Protected) | Protected interests manager, notification channels, password change, data export. |
+| `*` | **404 Not Found** | Minimal Layout | Editorial empty state with quick navigation back to `/today`. |
 
 ---
 
-## Pages & Routes
+## 4. Screen Specifications & User Flows
 
-| Route | Page Name | Purpose |
-| :--- | :--- | :--- |
-| `/` | **Radar Dashboard** | Main home: Urgent deadlines (<24h, <3d, <7d), active applications, overdue warnings, quick actions. |
-| `/discover` | **Opportunity Catalog** | Global searchable, filterable directory of hackathons, internships, scholarships, and contests. |
-| `/opportunities/:id` | **Opportunity Detail** | In-depth breakdown of eligibility, dates, requirements, links, and personal tracking controls. |
-| `/calendar` | **Deadline Calendar** | Month & week views showing deadline markers, color-coded by category and status. |
-| `/radar/my-list` | **My Tracked Radar** | Full table/kanban view of user's saved opportunities categorized by tracking status (`Saved`, `Applied`, etc.). |
-| `/opportunities/new` | **Add Opportunity** | Ingestion modal/page with dual mode: Manual entry or AI text/URL extraction. |
-| `/settings` | **Preferences** | Configure reminder frequencies (7d, 3d, 1d), default categories, and notification channels. |
-| `/login` & `/register` | **Authentication** | Sign in and registration views. |
+### 4.1 Today View (`/today`)
+The primary daily cockpit for the user.
+- **Top Section — Active Session Bar**:
+  - If a session is running: Displays current work item and work unit title, live elapsed stopwatch timer (HH:MM:SS), "Stop Session" button, and optional notes input.
+  - If idle: Displays a quick "Start Focus Session" selector with one-click launch for the current NOW recommendation.
+- **Middle Section — NOW & NEXT Allocation**:
+  - **NOW Card**: Clear, prominent highlight of the single most critical work block right now, duration, deadline countdown, and deterministic rationale (e.g., *"4.5h remaining with only 3.6h capacity before Friday"*).
+  - **NEXT Card**: The queued work block or scheduled commitment immediately following the current block.
+- **Bottom Section — Today's Timeline Plan**:
+  - Chronological list of planned time blocks for today.
+  - Each item shows start/end time, work title, status indicator (`pending`, `in_progress`, `completed`, `rescheduled`), and action buttons (start timer, mark complete, dismiss).
+  - Ability to trigger "Re-generate Plan" if reality shifts during the day.
+
+### 4.2 Radar Dashboard (`/dashboard`)
+Macro view of commitments and temporal risk.
+- **Radar Urgency Quadrant**:
+  - Summary counter cards grouped by risk states: `SAFE`, `WATCH`, `AT RISK`, `CRITICAL`, `OVERDUE`.
+  - Visual high-contrast risk ratio metric showing remaining effort vs available suitable hours.
+- **Approaching Deadlines Widget**:
+  - Chronological list of deadlines due within the next 7 days.
+  - Includes progress bar (completed units vs total units), estimated remaining hours, and deadline timestamp with countdown badge.
+- **Weekly Capacity Meter**:
+  - Horizontal progress bar comparing total estimated workload this week against net available capacity.
+  - Alerts user if workload exceeds 100% capacity ("Overbooked by 4.5 hours").
+
+### 4.3 Work Master & Add Work Flow (`/work`, `/work/new`)
+- **Work Items Table & Cards**:
+  - Filter bar: Status (`All`, `In Progress`, `Completed`, `Blocked`), Category (`Academic`, `Project`, `Exam Prep`, etc.), Risk State.
+  - Sort dropdown: Dynamic Priority (default), Deadline Proximity, Remaining Effort, Created Date.
+  - Row / Card contents: Title, category badge, deadline date + relative countdown, remaining estimated hours, risk state badge, completion progress ring.
+- **Add Work Flow (Modal / Slide-Over Drawer)**:
+  - **Step 1: Input Mode**: User enters title, deadline, category, and optional natural language description.
+  - **Step 2: AI Decomposition (Optional)**: User clicks "Decompose with AI". A drawer displays suggested work units with estimated durations and detected missing information.
+  - **Step 3: User Verification**: User can edit subtask names, delete items, reorder, adjust estimates, or add custom subtasks.
+  - **Step 4: Save**: Work item and verified units are committed to the backend.
+
+### 4.4 Work Item Detail (`/work/:id`)
+- **Header**: Title, category tag, deadline picker (with hard/soft toggle), status selector (`todo`, `in_progress`, `blocked`, `completed`).
+- **Telemetry Bar**: Total estimated hours, user pace factor adjustment, total actual logged hours, current risk state, dynamic priority score.
+- **Work Units Checklist**:
+  - Interactive reorderable list of subtasks.
+  - Each row shows completion checkbox, title, estimate, actual time spent, and a "Start Timer" button.
+- **Risk & Priority Explanation Drawer**:
+  - Transparent textual explanation of why the item is ranked at its current priority.
+  - Math breakdown: Remaining Effort ($E_r$) / Available Hours ($H_a$) = Risk Ratio ($R$).
+- **Logged Time History**:
+  - List of past work sessions with duration, dates, notes, and manual "Log Time" button.
+
+### 4.5 Timeline Projection (`/timeline`)
+- Horizontal Gantt-style timeline projection spanning 14, 30, or 60 days.
+- Maps estimated work hours strictly across days that have suitable available capacity.
+- Displays deadline vertical milestone lines. If an item's projected completion extends beyond its deadline, the projected segment is highlighted in alert styling with a "Projected Late" tag.
+
+### 4.6 Calendar View (`/calendar`)
+- Dual view toggle: Week View (default) and Day View.
+- Visualizes:
+  - Recurring available working windows (lightly shaded background).
+  - Schedule blackout blocks and protected personal interests (e.g., Gym, Meals, Classes).
+  - Planned work slots from the Daily Planner.
+  - Historical completed time entry blocks.
+- Drag-to-create schedule blocks and click-to-view details.
+
+### 4.7 Workload & Capacity View (`/workload`)
+- Day-by-day and week-by-week bar charts comparing available working hours vs. scheduled work demand.
+- Visual overload threshold: bars exceeding 100% capacity are highlighted with an overbooking indicator.
+- Breakdown panel showing which projects are consuming the largest share of weekly capacity.
+
+### 4.8 Daily Planning View (`/planning`)
+- Interactive daily time budget manager.
+- Controls to generate or adapt a plan for any selected date.
+- Shows total day capacity, protected personal interest hours, and planned work hours.
+- Reorder items via drag-and-drop to adjust planned sequence.
+
+### 4.9 Personal Insights View (`/insights`)
+- **Category Pace Factors**: Visual meters showing user's empirical multiplier for each category (e.g., Academic = 1.25x, Coding = 1.05x).
+- **Prediction vs. Actual Distribution**: Scatter or bar comparison of estimated hours vs. actual logged hours over time.
+- **Estimation Accuracy Trend**: Moving average of estimation error showing personalization progress over weeks.
 
 ---
 
-## Key Components
+## 5. Key Reusable UI Components
 
-### 1. `UrgencyBadge`
-- Renders remaining time dynamically (e.g. `14h left`, `2d left`, `Oct 24`).
-- Visual indicator matches the urgency token (`--urgency-critical`, `--urgency-warning`, etc.).
-
-### 2. `OpportunityCard`
-- Compact, high-information-density card.
-- Displays: Title, Organizing Body, Category Tag, Mode Badge (`Online`/`In-Person`), Urgency Countdown, and Quick Action ("Save" / "Mark Applied").
-
-### 3. `AIExtractorBox`
-- Clean textarea allowing user to paste an announcement text or URL.
-- Includes an "Extract Details" button with inline loading spinner.
-- Displays pre-filled fields in an editable review panel before saving.
-
-### 4. `StatusSelector`
-- Dropdown or pill selector for application status (`Saved`, `Interested`, `Applied`, `Interviewing`, `Offered`, `Rejected`, `Completed`).
-- Seamless optimistic UI update on status change.
-
-### 5. `CalendarGrid`
-- Accessible monthly calendar view.
-- Days with deadlines display indicator chips with count and top urgency level. Clicking a day opens a sidebar drawer listing that day's deadlines.
+1. **`ActiveSessionWidget`**: Global or header-mounted timer showing running stopwatch, elapsed time, and quick stop/note controls.
+2. **`RiskBadge`**: Displays risk state (`SAFE`, `WATCH`, `AT RISK`, `CRITICAL`, `OVERDUE`) accompanied by explicit text and icon, never relying on color alone.
+3. **`DynamicPriorityScore`**: Displays score (0–100) with a tooltip or popover detailing the mathematical calculation and constraints.
+4. **`WorkDecompositionEditor`**: Reorderable list of subtasks with inline duration inputs, add/remove controls, and total duration tally.
+5. **`CapacityBar`**: Visual meter showing allocated vs available hours with overflow alert state.
+6. **`TimeEntryModal`**: Form for retroactively logging completed time with start/end time or manual duration in minutes.
 
 ---
 
-## User Flows & Responsive Behavior
+## 6. State Management Architecture
 
-### Mobile (< 768px)
-- Bottom navigation bar: `Dashboard`, `Discover`, `My Radar`, `Calendar`.
-- Single column feed with full-width cards.
-- Sticky action bar on Opportunity Detail page ("Apply Now" & "Save to Radar").
+### 6.1 Server State (TanStack Query)
+- Query keys structured hierarchically:
+  - `['work', 'list', filters]`
+  - `['work', 'detail', workId]`
+  - `['work', 'units', workId]`
+  - `['planning', 'today']`
+  - `['tracking', 'active-session']`
+  - `['availability', 'templates']`
+  - `['availability', 'blocks', dateRange]`
+  - `['insights', 'summary']`
+  - `['notifications', 'list']`
+- **Optimistic Updates**: Toggling subtask completion or reordering immediately updates client cache and reverts on API error.
 
-### Desktop (>= 768px)
-- Fixed left sidebar navigation (240px) + main scrollable content area.
-- Multi-column grid on Discover page (2 to 3 cards per row).
-- Split-screen drawer on Calendar for immediate inspection of day details without leaving the view.
-
----
-
-## State Handling
-
-### Loading States
-- **Skeleton Screens**: Content-shaped pulse skeletons instead of generic full-screen spinners to minimize perceived latency.
-- **Action Buttons**: Subtle inline spinners with disabled state to prevent duplicate submissions.
-
-### Error States
-- **Banner Alerts**: Dismissible top banners for network errors.
-- **Field-Level Validation**: Clear red validation hints beneath invalid form inputs (e.g., `"Please provide a valid URL"` or `"Deadline must be in the future"`).
-- **Graceful Fallbacks**: If the AI extraction service fails, an inline message displays: *"AI extraction timed out. Please enter details manually"* while preserving the user's pasted text in the textarea.
-
-### Empty States
-- Informative, action-oriented empty states:
-  - *Empty Radar*: "You haven't saved any deadlines yet. [Browse Discover Catalog] or [Add Opportunity]."
-  - *No Urgent Deadlines*: "All caught up! No deadlines approaching in the next 7 days."
+### 6.2 Client Session State (Zustand)
+- **`useTimerStore`**: Maintains local running tick for active session, synchronization with server timestamp, and local note draft.
+- **`useUIStore`**: Manages modal visibility (Add Work modal, Log Time modal), drawer expansion, and timeline zoom levels.
 
 ---
 
-## Accessibility (a11y)
-- WCAG AA contrast compliance across all text and background tokens.
-- All interactive elements keyboard navigable (`Tab`, `Enter`, `Space`) with visible focus outlines (`--border-focus`).
-- Semantic HTML tags (`<main>`, `<nav>`, `<article>`, `<header>`, `<time>`).
-- Screen reader accessible `aria-label` for icon-only buttons.
-- Deadline timestamps use the `<time datetime="...">` semantic tag.
+## 7. Operational States: Loading, Empty, and Error Handling
+
+### 7.1 Loading States
+- **Skeleton Loaders**: Custom structural skeleton layouts matching table rows, cards, and timeline bars rather than full-page spinners.
+- **Inline Action Spinners**: Button loading states for API mutations to prevent duplicate submissions.
+
+### 7.2 Empty States
+- **Work Items Empty**: *"No active work items. Add your first assignment, project, or exam preparation to activate your radar."* with primary CTA "Add Work".
+- **Today Plan Empty**: *"No plan generated for today yet. Review your available capacity (4.0h) and click 'Generate Plan'."*
+- **Notifications Empty**: *"All caught up. No deadline risk escalations or alerts."*
+
+### 7.3 Error States & Fallbacks
+- **API Disconnections**: Non-intrusive floating banner: *"Network connection lost. Time tracking continues offline and will sync when reconnected."*
+- **AI Service Degradation**: If `/ai/decompose` fails or times out, the Add Work drawer informs: *"AI decomposition is currently unavailable. You can enter your subtasks manually below."* Input text is strictly preserved.
+
+---
+
+## 8. Accessibility (a11y) & Responsiveness
+
+- **Keyboard Navigation**: Full tab navigation across all interactive elements, modal focus trapping, and Esc key dismissals.
+- **ARIA Compliance**: Proper `aria-expanded`, `aria-haspopup`, `role="timer"`, and screen-reader status live regions for stopwatch updates.
+- **Mobile Responsiveness**:
+  - Desktop (>= 1024px): Top editorial navigation, wide multi-column layouts, side-by-side timeline/detail drawers.
+  - Tablet (768px - 1023px): Two-column adaptive grid, collapsible filters.
+  - Mobile (< 768px): Single-column stack, bottom navigation bar (`Today`, `Work`, `Timeline`, `Insights`), full-screen overlay modals for work creation and stopwatch tracking.

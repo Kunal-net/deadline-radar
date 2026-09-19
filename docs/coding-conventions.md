@@ -10,26 +10,26 @@
 ## 1. Naming Conventions
 
 ### Python (Backend & AI)
-- **Modules and Files**: `snake_case.py` (e.g., `opportunity_service.py`, `extractor.py`).
-- **Classes**: `PascalCase` (e.g., `OpportunityRepository`, `ExtractionResult`).
-- **Functions and Methods**: `snake_case()` (e.g., `get_urgent_deadlines()`, `parse_raw_announcement()`).
-- **Variables and Attributes**: `snake_case` (e.g., `is_rolling`, `deadline_utc`).
-- **Constants**: `UPPER_SNAKE_CASE` (e.g., `DEFAULT_REMINDER_DAYS`, `MAX_TITLE_LENGTH`).
-- **Pydantic Schemas**: Suffix with purpose (e.g., `OpportunityCreate`, `OpportunityResponse`, `OpportunityUpdate`).
+- **Modules and Files**: `snake_case.py` (e.g., `work_item_service.py`, `risk_engine.py`, `planner.py`).
+- **Classes**: `PascalCase` (e.g., `WorkItemRepository`, `RiskAssessmentService`).
+- **Functions and Methods**: `snake_case()` (e.g., `calculate_deadline_risk()`, `decompose_work_item()`).
+- **Variables and Attributes**: `snake_case` (e.g., `is_hard_deadline`, `deadline_utc`, `remaining_hours`).
+- **Constants**: `UPPER_SNAKE_CASE` (e.g., `DEFAULT_BUFFER_PERCENTAGE`, `MAX_TITLE_LENGTH`).
+- **Pydantic Schemas**: Suffix with purpose (e.g., `WorkItemCreate`, `WorkItemResponse`, `WorkItemUpdate`).
 
 ### TypeScript (Frontend)
 - **Files**:
-  - Components: `PascalCase.tsx` (e.g., `OpportunityCard.tsx`, `UrgencyBadge.tsx`).
-  - Hooks: `camelCase.ts` starting with `use` (e.g., `useOpportunities.ts`).
-  - Utilities and Types: `camelCase.ts` (e.g., `formatDate.ts`, `apiClient.ts`).
-- **Components**: `PascalCase` (e.g., `function OpportunityCard(props: OpportunityCardProps)`).
-- **Interfaces and Types**: `PascalCase` (e.g., `Opportunity`, `UrgencyLevel`).
-- **Variables and Functions**: `camelCase` (e.g., `fetchDashboardMetrics()`).
+  - Components: `PascalCase.tsx` (e.g., `WorkItemCard.tsx`, `RiskBadge.tsx`, `ActiveTimer.tsx`).
+  - Hooks: `camelCase.ts` starting with `use` (e.g., `useWorkItems.ts`, `useActiveSession.ts`).
+  - Utilities and Types: `camelCase.ts` (e.g., `formatDuration.ts`, `apiClient.ts`).
+- **Components**: `PascalCase` (e.g., `function WorkItemCard(props: WorkItemCardProps)`).
+- **Interfaces and Types**: `PascalCase` (e.g., `WorkItem`, `RiskState`, `TimeEntry`).
+- **Variables and Functions**: `camelCase` (e.g., `fetchDashboardSummary()`).
 
 ### Database
-- **Tables**: Plural `snake_case` (e.g., `opportunities`, `user_tracking`).
-- **Columns**: `snake_case` (e.g., `created_at`, `application_url`).
-- **Foreign Keys**: `<singular_table>_id` (e.g., `user_id`, `opportunity_id`).
+- **Tables**: Plural `snake_case` (e.g., `work_items`, `work_units`, `time_entries`).
+- **Columns**: `snake_case` (e.g., `created_at`, `remaining_estimated_hours`).
+- **Foreign Keys**: `<singular_table>_id` (e.g., `user_id`, `work_item_id`).
 
 ---
 
@@ -41,7 +41,7 @@ backend/
 ├── app/
 │   ├── api/
 │   │   ├── v1/
-│   │   │   ├── endpoints/          # Route handlers (auth, opportunities, radar, dashboard, ai)
+│   │   │   ├── endpoints/          # Route handlers (auth, work, tracking, planning, dashboard, ai)
 │   │   │   └── router.py           # Top-level API router mounting
 │   ├── core/
 │   │   ├── config.py               # Settings and env validation (Pydantic Settings)
@@ -50,7 +50,10 @@ backend/
 │   ├── models/                     # SQLAlchemy DB models (one entity per module)
 │   ├── schemas/                    # Pydantic v2 schemas (request/response validation)
 │   ├── services/                   # Business logic and external orchestrators
-│   │   ├── opportunity_service.py
+│   │   ├── work_service.py
+│   │   ├── risk_service.py
+│   │   ├── planning_service.py
+│   │   ├── tracking_service.py
 │   │   ├── notification_service.py
 │   │   └── ai/                     # AI facades, prompt adapters, and parsers
 │   └── main.py                     # FastAPI application factory
@@ -72,10 +75,12 @@ frontend/
 │   ├── components/                 # Shared UI components (Button, Badge, Card, Modal)
 │   │   ├── ui/
 │   │   └── layout/
-│   ├── features/                   # Domain features (opportunities, dashboard, radar, calendar)
-│   │   ├── opportunities/
+│   ├── features/                   # Domain features (today, work, dashboard, timeline, calendar, planning)
+│   │   ├── today/
+│   │   ├── work/
 │   │   ├── dashboard/
-│   │   └── calendar/
+│   │   ├── timeline/
+│   │   └── planning/
 │   ├── hooks/                      # Reusable custom React hooks
 │   ├── lib/                        # API client, date formatters, constants
 │   ├── types/                      # TypeScript interfaces and type definitions
@@ -97,7 +102,7 @@ frontend/
 
 ## 4. Error Handling
 - **Never Fail Silently**: Never catch generic `Exception` without logging or re-raising.
-- **Custom Domain Exceptions**: Define domain exceptions (e.g. `OpportunityNotFoundError`, `DuplicateOpportunityError`) in the service layer, and map them to HTTP responses via FastAPI exception handlers.
+- **Custom Domain Exceptions**: Define domain exceptions (e.g. `WorkItemNotFoundError`, `ActiveSessionConflictError`) in the service layer, and map them to HTTP responses via FastAPI exception handlers.
 - **Structured Error Responses**: All API errors must return the standard JSON envelope:
   ```json
   {
@@ -116,8 +121,8 @@ frontend/
 - Use standard Python `logging` or `loguru` configured with structured output (JSON or timestamped log format).
 - **Log Levels**:
   - `DEBUG`: Verbose diagnostics (payload shapes, intermediate parsing steps).
-  - `INFO`: Normal operational events (user registered, opportunity created, scheduled notification run).
-  - `WARNING`: Recoverable anomalies (AI extraction timed out, falling back to manual entry; unrecognized timezone).
+  - `INFO`: Normal operational events (user registered, work item created, scheduled notification run).
+  - `WARNING`: Recoverable anomalies (AI decomposition timed out, falling back to manual entry; unrecognized timezone).
   - `ERROR`: Unhandled exceptions, database query failures, broken external calls.
 - **No Sensitive Data**: Never log passwords, tokens, full authorization headers, or private user credentials.
 
@@ -127,7 +132,7 @@ frontend/
 - **Python**: Strict type hints required on all function arguments and return types. Verify via `mypy` or `ruff`.
   ```python
   # Good
-  async def get_opportunity_by_id(db: AsyncSession, opportunity_id: UUID) -> Opportunity | None:
+  async def get_work_item_by_id(db: AsyncSession, work_item_id: UUID) -> WorkItem | None:
       ...
   ```
 - **TypeScript**: No `any`. Use explicit interfaces, generics, or `unknown` with type guards. Enable `strict: true` in `tsconfig.json`.

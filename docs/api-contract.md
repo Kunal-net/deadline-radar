@@ -1,848 +1,854 @@
-# Deadline Radar — API Contract
+# Deadline Radar — API Contract Specification
 
 ## 1. Overview
 
-This document serves as the **authoritative, implementation-ready contract** governing all HTTP communication between the Frontend Client and the FastAPI Backend for **Deadline Radar**. Both frontend and backend engineers (and AI coding agents) must adhere strictly to the endpoints, schemas, headers, status codes, and error formats defined herein.
+This document serves as the **authoritative, implementation-ready REST API contract** governing all HTTP communication between the Frontend Client and the FastAPI Backend for **Deadline Radar**. Both frontend and backend engineers (and AI coding agents) must adhere strictly to the endpoints, schemas, headers, status codes, and error formats defined herein.
 
 - **Protocol**: RESTful JSON over HTTPS (TLS 1.3)
 - **Base URL (Development)**: `http://localhost:8000/api/v1`
 - **Base URL (Production)**: `https://api.deadlineradar.com/api/v1` (`TODO — DEPLOYMENT DECISION`)
 - **Default Media Type**: `application/json; charset=utf-8`
 - **Date & Time Standard**: ISO 8601 UTC strings (`YYYY-MM-DDTHH:MM:SSZ`)
+- **Data Categories**: Every field returned by this API is explicitly classified as `USER INPUT`, `AI-DERIVED DATA`, `SYSTEM-CALCULATED DATA`, `USER-VERIFIED DATA`, or `ACTUAL OBSERVED DATA`.
 
 ---
 
-## 2. Base URL & Resource Organization
+## 2. Resource Organization & Namespaces
 
-All core API endpoints are prefixed with the version namespace `/api/v1`:
+All core API endpoints are organized under versioned domain routes:
 
 ```text
 /api/v1/
-├── /auth/               # Account registration, login, logout, token verification
-├── /users/              # Current user profile and personalized preferences
-├── /opportunities/      # Public opportunity discovery catalog, details, creation
-├── /radar/              # Personal opportunity tracking lifecycle & private notes
-├── /dashboard/          # Urgency aggregation, countdowns, and calendar views
-├── /notifications/      # Proximity reminders, unread counts, read acknowledgments
-├── /ai/                 # AI-assisted unstructured parsing and extraction
-└── /internal/           # Secured administrative & worker triggers
+├── /auth/                  # Registration, login, token refresh, current session
+├── /users/                 # Profile, working preferences, protected interests
+├── /availability/          # Recurring weekly schedule templates & blackout blocks
+├── /work/                  # Work items, subtasks (work units), status, manual estimates
+├── /tracking/              # Real-time stopwatch sessions & manual time entries
+├── /planning/              # Daily adaptive plan generation, reordering, item states
+├── /dashboard/             # High-level operational radar, critical items, today summary
+├── /today/                 # Unified active session, scheduled plan, urgent radar items
+├── /timeline/              # Gantt-style timeline projection and deadline markers
+├── /calendar/              # Day/week calendar aggregating schedule blocks and time entries
+├── /workload/              # Weekly capacity vs. remaining estimated effort calculations
+├── /insights/              # Historical pace factors, accuracy metrics, category trends
+├── /notifications/         # Proximity reminders, risk escalation alerts, notifications
+└── /ai/                    # AI work parsing, task decomposition, and draft estimates
 ```
 
 ---
 
-## 3. Versioning
+## 3. Authentication & Authorization
 
-- **URI Versioning**: The API version is encoded in the URI path (`/api/v1/`).
-- **Backward Compatibility Policy**:
-  - Non-breaking changes (adding optional request fields, adding new response fields) will occur within `/api/v1/`.
-  - Breaking changes (renaming fields, removing endpoints, changing required validation rules) will mandate a new major version path (`/api/v2/`).
-
----
-
-## 4. Authentication
-
-Deadline Radar utilizes stateless **JSON Web Tokens (JWT)**:
-
-### 4.1 Request Headers
-Protected endpoints require the `Authorization` header with a valid Bearer token:
+### 3.1 Request Headers
+Protected endpoints require an `Authorization` header containing a valid Bearer JWT:
 ```http
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 Content-Type: application/json
 ```
 
-### 4.2 Token Semantics
-- **Access Token**: Short-lived (30 minutes) containing claims:
-  - `sub`: User UUID string (e.g., `"usr_9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"`)
-  - `email`: User login email
-  - `exp`: Expiration timestamp in UTC seconds
-- **Session Expiration**: Expired or invalid tokens return `HTTP 401 Unauthorized`. The client must catch this and redirect to login without corrupting local state.
+### 3.2 Token Claims & Lifetimes
+- **Access Token**: Lifetime of 30 minutes (`ACCESS_TOKEN_EXPIRE_MINUTES`). Contains `sub` (User UUID), `email`, and `exp` (UTC timestamp).
+- **Session Expiration**: Invalid or expired tokens return `HTTP 401 Unauthorized`. The frontend client must catch this and redirect to login without corrupting local state.
+
+### 3.3 Strict Row-Level Ownership Isolation
+Every entity in the database is strictly owned by `user_id`. Users can **only** query, mutate, or delete records belonging to their authenticated identity (`user_id == current_user.id`). Attempting to access another user's record returns `HTTP 404 Not Found` (to avoid leaking resource existence) or `HTTP 403 Forbidden`.
 
 ---
 
-## 5. Authorization
+## 4. Standard Response Formats & Error Handling
 
-Access boundaries are enforced at the service/repository layer using strict row-level isolation:
+### 4.1 Success Envelope
+Standard single-resource operations return the resource object directly with appropriate HTTP status codes (`200 OK`, `201 Created`, `204 No Content`). Collections return a standard envelope:
 
-| Scope | Access Level | Description |
-| :--- | :--- | :--- |
-| **Public** | Unauthenticated | Catalog listing, opportunity details, category taxonomies, system health. |
-| **Authenticated User** | Bearer Token Required | Personal radar, notes, application tracking, dashboard metrics, notifications, user preferences, AI extraction. |
-| **User Resource Isolation** | Strict Row Ownership | Users can **only** view, mutate, or delete their own tracking records, notes, and notifications (`user_id == current_user.id`). Attempting to access another user's resources returns `HTTP 404 Not Found` or `HTTP 403 Forbidden`. |
-| **Internal Service** | `X-Internal-Token` Header | Internal ingestion runs and notification worker sweeps. |
+```json
+{
+  "items": [],
+  "total": 0,
+  "page": 1,
+  "page_size": 20,
+  "has_more": false
+}
+```
 
----
-
-## 6. Common Request Rules
-
-1. **Content-Type**: Requests with a body (`POST`, `PUT`, `PATCH`) must specify `Content-Type: application/json`.
-2. **Strict Payload Validation**: Payloads are validated against Pydantic v2 schemas. Extraneous or malformed fields trigger `HTTP 422 Unprocessable Entity`.
-3. **Strings & Whitespace**: Leading and trailing whitespaces are automatically trimmed from user string inputs.
-4. **URL Validation**: All URL fields (`application_url`, `website_url`) must be valid HTTP/HTTPS URLs (max 2048 characters).
-
----
-
-## 7. Common Response Rules
-
-1. **JSON Standard**: All responses return valid UTF-8 JSON.
-2. **Consistent Field Naming**: All JSON keys utilize `snake_case` (e.g., `application_url`, `time_remaining_seconds`).
-3. **Empty Collections**: When zero records match a query, the API returns an empty array `[]` with `HTTP 200 OK`, never `null` or a 404 error.
-4. **Timestamps**: All timestamps are formatted as ISO 8601 UTC strings with a trailing `Z` (e.g., `"2026-04-15T23:59:59Z"`).
-
----
-
-## 8. Error Format
-
-All non-2xx error responses adhere strictly to this standardized JSON envelope:
+### 4.2 Standard Error Envelope
+All error responses (4xx, 5xx) strictly follow RFC 7807-inspired JSON structures:
 
 ```json
 {
   "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Invalid request payload. Please correct the highlighted fields.",
-    "details": [
+    "code": "WORK_ITEM_NOT_FOUND",
+    "message": "Work item 'wi_9b1deb4d' does not exist or access is forbidden.",
+    "details": [],
+    "timestamp": "2026-09-20T10:00:00Z"
+  }
+}
+```
+
+### 4.3 Standard HTTP Status Codes
+- `200 OK`: Request succeeded.
+- `201 Created`: Resource successfully created.
+- `204 No Content`: Resource successfully deleted or state updated with empty response.
+- `400 Bad Request`: Malformed syntax or invalid query parameters.
+- `401 Unauthorized`: Missing, invalid, or expired Bearer token.
+- `403 Forbidden`: Authenticated user lacks permission.
+- `404 Not Found`: Resource does not exist or user does not own it.
+- `409 Conflict`: Resource conflict (e.g., email already registered, concurrent session active).
+- `422 Unprocessable Entity`: Request body failed Pydantic validation rules.
+- `429 Too Many Requests`: Rate limit exceeded (100 req/min for general API, 10 req/min for AI endpoints).
+- `500 Internal Server Error`: Unhandled server exception.
+
+---
+
+## 5. Domain Endpoint Specifications
+
+### 5.1 Authentication (`/auth`)
+
+#### `POST /auth/register`
+Creates a new user account and seeds default preferences and weekly availability.
+- **Request Body**:
+  ```json
+  {
+    "email": "student@university.edu",
+    "password": "SecurePassword123!",
+    "full_name": "Alex Mercer",
+    "timezone": "America/New_York"
+  }
+  ```
+- **Validation**: Email must be valid RFC 5322; password minimum 8 chars with uppercase, lowercase, and digit; timezone must be valid IANA string.
+- **Response (201 Created)**:
+  ```json
+  {
+    "user": {
+      "id": "usr_7c9e6679-7425-40de-944b-e07fc1f90ae7",
+      "email": "student@university.edu",
+      "full_name": "Alex Mercer",
+      "timezone": "America/New_York",
+      "created_at": "2026-09-20T10:00:00Z"
+    },
+    "tokens": {
+      "access_token": "eyJhbGciOi...",
+      "token_type": "bearer",
+      "expires_in": 1800
+    }
+  }
+  ```
+
+#### `POST /auth/login`
+Authenticates credentials and returns a Bearer access token.
+- **Request Body**:
+  ```json
+  {
+    "email": "student@university.edu",
+    "password": "SecurePassword123!"
+  }
+  ```
+- **Response (200 OK)**: Same schema as `tokens` object above.
+- **Errors**: `401 Unauthorized` (`INVALID_CREDENTIALS`).
+
+#### `GET /auth/me`
+Fetches authenticated user identity.
+- **Headers**: `Authorization: Bearer <token>`
+- **Response (200 OK)**: User profile object.
+
+---
+
+### 5.2 User Preferences & Protected Interests (`/users`)
+
+#### `GET /users/me/preferences`
+Retrieves working preferences, reminder offsets, and buffer multipliers.
+- **Response (200 OK)**:
+  ```json
+  {
+    "id": "pref_3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "default_working_hours_per_day": 4.0,
+    "buffer_percentage": 20.0,
+    "preferred_work_chunk_minutes": 90,
+    "min_break_minutes": 15,
+    "reminder_offsets_hours": [168, 72, 24, 6],
+    "ai_assistance_enabled": true,
+    "theme": "dark_editorial"
+  }
+  ```
+
+#### `PATCH /users/me/preferences`
+Updates working preferences.
+- **Request Body**: Subset of preferences fields.
+- **Response (200 OK)**: Updated preferences object.
+
+#### `GET /users/me/interests`
+Retrieves user's protected personal activities and weekly target hours.
+- **Response (200 OK)**:
+  ```json
+  {
+    "interests": [
       {
-        "field": "deadline",
-        "issue": "Deadline must be a valid future ISO 8601 UTC timestamp."
+        "id": "int_1a2b3c4d",
+        "name": "Gym & Strength Training",
+        "category": "fitness",
+        "weekly_target_hours": 6.0,
+        "is_protected": true,
+        "color_hex": "#E07A5F"
+      },
+      {
+        "id": "int_2b3c4d5e",
+        "name": "Personal Game Project",
+        "category": "creative",
+        "weekly_target_hours": 4.0,
+        "is_protected": true,
+        "color_hex": "#81B29A"
       }
     ]
   }
-}
-```
+  ```
 
-### Standard Error Codes
-| Error Code | HTTP Status | Description |
-| :--- | :---: | :--- |
-| `UNAUTHORIZED` | 401 | Missing, malformed, or expired JWT access token. |
-| `FORBIDDEN` | 403 | Authenticated user lacks permission to access or mutate the resource. |
-| `RESOURCE_NOT_FOUND` | 404 | Target entity does not exist or does not belong to the user. |
-| `VALIDATION_ERROR` | 422 | Field-level validation failed (Pydantic schema violation). |
-| `CONFLICT` | 409 | Duplicate unique constraint violation (e.g. email or canonical URL exists). |
-| `RATE_LIMIT_EXCEEDED`| 429 | Request threshold exceeded; client must back off. |
-| `AI_SERVICE_UNAVAILABLE`| 503 | AI model provider timed out or returned unparseable output. |
-| `INTERNAL_SERVER_ERROR`| 500 | Unhandled server exception. |
+#### `POST /users/me/interests`
+Creates a new protected interest.
+- **Request Body**: `name`, `category`, `weekly_target_hours`, `is_protected`, `color_hex`.
+- **Response (201 Created)**: Created interest object.
 
 ---
 
-## 9. Pagination
+### 5.3 Time Availability & Schedule Blocks (`/availability`)
 
-Listing endpoints (`GET /opportunities`, `GET /radar`, `GET /notifications`) implement offset-based pagination:
-
-### Query Parameters
-- `page` (integer, optional, default: `1`, minimum: `1`): The 1-indexed page number.
-- `limit` (integer, optional, default: `20`, minimum: `1`, maximum: `100`): Number of items per page.
-
-### Response Envelope
-```json
-{
-  "items": [ ... ],
-  "pagination": {
-    "page": 1,
-    "limit": 20,
-    "total_items": 142,
-    "total_pages": 8,
-    "has_next": true,
-    "has_prev": false
-  }
-}
-```
-
----
-
-## 10. Filtering
-
-Supported query parameters across catalog listing:
-- `category` (string, optional): Domain taxonomy slug (e.g. `hackathon`, `internship`, `scholarship`).
-- `mode` (string, optional): Delivery format (`online`, `in_person`, `hybrid`).
-- `is_free` (boolean, optional): `true` filters opportunities where `cost == 0.00`.
-- `cost_max` (numeric, optional): Maximum registration fee in USD.
-- `deadline_from` (ISO 8601 UTC string, optional): Earliest deadline cutoff.
-- `deadline_to` (ISO 8601 UTC string, optional): Latest deadline cutoff.
-- `status` (string, optional): Global status (`open`, `closing_soon`, `expired`). Defaults to `open,closing_soon`.
-- `organization_id` (UUID, optional): Filter opportunities hosted by a specific organization.
-- `tag` (string, optional): Filter by keyword tag (e.g. `ai`, `python`).
-
----
-
-## 11. Sorting
-
-- `sort_by` (string, optional): Attribute to sort by. Options:
-  - `deadline` (Default for catalog and urgent views)
-  - `created_at` (Recently added listings)
-  - `title` (Alphabetical)
-- `sort_order` (string, optional):
-  - `asc` (Default for `deadline`: earliest closing date first)
-  - `desc` (Default for `created_at`: newest additions first)
-
----
-
-## 12. Date & Time
-
-- **Universal UTC Transport**: All date-time fields transmitted over the API must be ISO 8601 UTC strings terminating in `Z` (`YYYY-MM-DDTHH:MM:SSZ`).
-- **Timezone Provenance**: Opportunity payloads return both the UTC `deadline` and the original host timezone string (`deadline_timezone`, e.g. `'EST'`, `'AoE'`).
-- **Inferred Time Indicator**: `is_deadline_time_inferred: true` indicates the announcement specified only a calendar day, with time defaulted to 23:59:59.
-- **Client Localization**: The frontend client is responsible for rendering UTC timestamps into the user's localized time (e.g., using `Intl.DateTimeFormat` and user preferences).
-
----
-
-## 13. Endpoints
-
-### 13.1 Authentication (`/auth`)
-
-#### `POST /auth/register`
-Create a new user account and receive an authenticated session token.
-- **Authorization**: Public
-- **Request Body**:
-```json
-{
-  "email": "student@university.edu",
-  "password": "SecurePassword123!",
-  "full_name": "Aarav Sharma"
-}
-```
-- **Response `201 Created`**:
-```json
-{
-  "user": {
-    "id": "usr_9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
-    "email": "student@university.edu",
-    "full_name": "Aarav Sharma",
-    "created_at": "2026-03-31T12:05:00Z"
-  },
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "bearer"
-}
-```
-- **Errors**: `400 Bad Request` (password complexity), `409 Conflict` (email already registered), `422 Unprocessable Entity`.
-
----
-
-#### `POST /auth/login`
-Authenticate with email and password.
-- **Authorization**: Public
-- **Request Body**:
-```json
-{
-  "email": "student@university.edu",
-  "password": "SecurePassword123!"
-}
-```
-- **Response `200 OK`**:
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "bearer",
-  "user": {
-    "id": "usr_9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
-    "email": "student@university.edu",
-    "full_name": "Aarav Sharma"
-  }
-}
-```
-- **Errors**: `401 Unauthorized` (invalid email or password), `422 Unprocessable Entity`.
-
----
-
-#### `POST /auth/logout`
-Terminates the user session.
-- **Authorization**: Authenticated User
-- **Response `204 No Content`**
-
----
-
-### 13.2 Users & Preferences (`/users`)
-
-#### `GET /users/me`
-Retrieve the authenticated user's profile.
-- **Authorization**: Authenticated User
-- **Response `200 OK`**:
-```json
-{
-  "id": "usr_9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
-  "email": "student@university.edu",
-  "full_name": "Aarav Sharma",
-  "created_at": "2026-03-31T12:05:00Z",
-  "updated_at": "2026-03-31T12:05:00Z"
-}
-```
-
----
-
-#### `PATCH /users/me`
-Update profile information (e.g. full name).
-- **Authorization**: Authenticated User
-- **Request Body**:
-```json
-{
-  "full_name": "Aarav K. Sharma"
-}
-```
-- **Response `200 OK`**: Updated user profile object.
-
----
-
-#### `GET /users/me/preferences`
-Retrieve user notification preferences and discovery feed filter preferences.
-- **Authorization**: Authenticated User
-- **Response `200 OK`**:
-```json
-{
-  "preferred_categories": ["hackathon", "internship"],
-  "preferred_mode": "online",
-  "timezone": "Asia/Kolkata",
-  "remind_7_days": true,
-  "remind_3_days": true,
-  "remind_1_day": true,
-  "remind_day_of": true,
-  "email_alerts": false,
-  "updated_at": "2026-03-31T12:10:00Z"
-}
-```
-
----
-
-#### `PATCH /users/me/preferences`
-Update user notification and filter preferences.
-- **Authorization**: Authenticated User
-- **Request Body**:
-```json
-{
-  "preferred_categories": ["hackathon", "internship", "fellowship"],
-  "timezone": "America/New_York",
-  "remind_7_days": false
-}
-```
-- **Response `200 OK`**: Updated preferences object.
-
----
-
-### 13.3 Opportunities (`/opportunities`)
-
-#### `GET /opportunities`
-List, search, and filter opportunities in the public catalog.
-- **Authorization**: Public (Optionally authenticated: includes user tracking status if Bearer token present)
-- **Query Parameters**: See Section 10 (Filtering) and Section 9 (Pagination).
-  - `search` (string, optional): Free-text query.
-- **Response `200 OK`**:
-```json
-{
-  "items": [
-    {
-      "id": "opp_1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
-      "title": "Global AI Hackathon 2026",
-      "organization": {
-        "id": "org_8f7e6d5c-4b3a-2109-8765-4321fedcba98",
-        "name": "Devpost & OpenAI",
-        "slug": "devpost-openai",
-        "logo_url": "https://cdn.deadlineradar.com/logos/devpost.png"
+#### `GET /availability/templates`
+Retrieves 7-day recurring weekly available working windows.
+- **Response (200 OK)**:
+  ```json
+  {
+    "templates": [
+      {
+        "id": "avail_monday",
+        "day_of_week": 1,
+        "start_time": "18:00:00",
+        "end_time": "22:00:00",
+        "is_available": true,
+        "capacity_hours": 4.0
       },
-      "category": "hackathon",
-      "description": "Build innovative autonomous agents using state-of-the-art LLMs.",
-      "deadline": "2026-04-15T23:59:59Z",
-      "deadline_timezone": "EST",
-      "is_deadline_time_inferred": false,
-      "is_rolling": false,
-      "start_date": "2026-04-18T09:00:00Z",
-      "end_date": "2026-04-20T18:00:00Z",
-      "eligibility": "Enrolled undergraduate and graduate students globally.",
-      "location": "Remote",
-      "mode": "online",
-      "cost": 0.00,
-      "application_url": "https://globalai.devpost.com",
-      "tags": ["ai", "hackathon", "python"],
-      "status": "open",
-      "summary": "Premier 48-hour student hackathon with $25k in prizes for agentic AI projects.",
-      "user_status": "saved",
-      "created_at": "2026-03-30T10:00:00Z",
-      "updated_at": "2026-03-30T10:00:00Z"
-    }
-  ],
-  "pagination": {
-    "page": 1,
-    "limit": 20,
-    "total_items": 1,
-    "total_pages": 1,
-    "has_next": false,
-    "has_prev": false
-  }
-}
-```
-
----
-
-#### `GET /opportunities/{id}`
-Retrieve complete profile details for a single opportunity.
-- **Authorization**: Public (Optionally authenticated: includes user tracking details and personal notes)
-- **Response `200 OK`**:
-```json
-{
-  "id": "opp_1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
-  "title": "Global AI Hackathon 2026",
-  "organization": {
-    "id": "org_8f7e6d5c-4b3a-2109-8765-4321fedcba98",
-    "name": "Devpost & OpenAI",
-    "slug": "devpost-openai",
-    "website_url": "https://devpost.com",
-    "logo_url": "https://cdn.deadlineradar.com/logos/devpost.png"
-  },
-  "category": "hackathon",
-  "description": "Full markdown description containing rules, tracks, prizes, and submission guidelines.",
-  "deadline": "2026-04-15T23:59:59Z",
-  "deadline_timezone": "EST",
-  "is_deadline_time_inferred": false,
-  "is_rolling": false,
-  "start_date": "2026-04-18T09:00:00Z",
-  "end_date": "2026-04-20T18:00:00Z",
-  "eligibility": "Enrolled undergraduate and graduate students globally.",
-  "location": "Remote",
-  "mode": "online",
-  "cost": 0.00,
-  "application_url": "https://globalai.devpost.com",
-  "canonical_url": "https://globalai.devpost.com",
-  "tags": ["ai", "hackathon", "python"],
-  "status": "open",
-  "summary": "Premier 48-hour student hackathon with $25k in prizes for agentic AI projects.",
-  "ai_eligibility_bullets": [
-    "Must be 18+ years of age",
-    "Teams of up to 4 members allowed",
-    "Submission must include public GitHub repo and demo video"
-  ],
-  "user_tracking": {
-    "status": "saved",
-    "personal_notes": "Ask Rahul and Sneha to team up.",
-    "applied_at": null,
-    "updated_at": "2026-03-31T14:00:00Z"
-  },
-  "created_at": "2026-03-30T10:00:00Z",
-  "updated_at": "2026-03-30T10:00:00Z"
-}
-```
-- **Errors**: `404 Not Found`.
-
----
-
-#### `POST /opportunities`
-Create an opportunity manually or confirm an AI-extracted draft.
-- **Authorization**: Authenticated User
-- **Request Body**:
-```json
-{
-  "title": "Summer Robotics Fellowship 2026",
-  "organization_name": "RoboTech Labs",
-  "category": "fellowship",
-  "description": "10-week summer research residency in autonomous manipulation.",
-  "deadline": "2026-04-20T17:00:00Z",
-  "deadline_timezone": "PST",
-  "is_rolling": false,
-  "start_date": "2026-06-01T09:00:00Z",
-  "end_date": "2026-08-10T17:00:00Z",
-  "eligibility": "Undergraduate seniors or graduate students in CS/EE.",
-  "location": "San Francisco, CA",
-  "mode": "in_person",
-  "cost": 0.00,
-  "application_url": "https://robotech.example.com/apply",
-  "tags": ["robotics", "fellowship", "ai"],
-  "summary": "10-week funded summer fellowship in San Francisco for robotics research."
-}
-```
-- **Response `201 Created`**: Returns created Opportunity object.
-- **Errors**: `409 Conflict` (duplicate canonical URL), `422 Unprocessable Entity`.
-
----
-
-#### `PATCH /opportunities/{id}`
-Update an existing opportunity (restricted to creator or admin).
-- **Authorization**: Authenticated Creator / Admin
-- **Request Body**: Partial opportunity fields.
-- **Response `200 OK`**: Returns updated Opportunity object.
-
----
-
-### 13.4 Personal Radar & Lifecycle Tracking (`/radar`)
-
-#### `GET /radar`
-Fetch all opportunities tracked by the authenticated user across their application lifecycle.
-- **Authorization**: Authenticated User
-- **Query Parameters**:
-  - `status` (string, optional): Filter by user tracking status (`saved`, `interested`, `applying`, `applied`, `selected`, `rejected`, `completed`, `archived`).
-  - `urgency` (string, optional): Filter by urgency tier (`<24h`, `<3d`, `<7d`, `overdue`).
-  - `page` (integer, default: `1`).
-  - `limit` (integer, default: `20`).
-- **Response `200 OK`**:
-```json
-{
-  "items": [
-    {
-      "tracking_id": "trk_5a6b7c8d-9e0f-1a2b-3c4d-5e6f7a8b9c0d",
-      "status": "applying",
-      "applied_at": null,
-      "personal_notes": "Drafting 500-word personal statement. Professor recommendation requested.",
-      "updated_at": "2026-03-31T09:30:00Z",
-      "opportunity": {
-        "id": "opp_1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
-        "title": "Global AI Hackathon 2026",
-        "organization_name": "Devpost & OpenAI",
-        "category": "hackathon",
-        "deadline": "2026-04-15T23:59:59Z",
-        "time_remaining_seconds": 1332000,
-        "mode": "online",
-        "cost": 0.00,
-        "application_url": "https://globalai.devpost.com"
+      {
+        "id": "avail_tuesday",
+        "day_of_week": 2,
+        "start_time": "19:00:00",
+        "end_time": "22:00:00",
+        "is_available": true,
+        "capacity_hours": 3.0
       }
-    }
-  ],
-  "pagination": {
-    "page": 1,
-    "limit": 20,
-    "total_items": 1,
-    "total_pages": 1,
-    "has_next": false,
-    "has_prev": false
+    ]
   }
-}
-```
+  ```
 
----
+#### `PUT /availability/templates`
+Replaces user's recurring weekly availability slots (0 = Sunday, 6 = Saturday).
+- **Request Body**: Array of availability template records.
+- **Response (200 OK)**: Updated templates array.
 
-#### `POST /radar`
-Save or start tracking an opportunity on personal radar.
-- **Authorization**: Authenticated User
-- **Idempotency Rule**: If the opportunity is already tracked by this user, the API is idempotent: it returns `200 OK` with the existing tracking record rather than a 409 Conflict. If new notes or status are provided, it updates them.
+#### `GET /availability/blocks`
+Retrieves schedule commitment overrides and blackouts within a date range.
+- **Query Params**: `start_date` (ISO UTC), `end_date` (ISO UTC)
+- **Response (200 OK)**:
+  ```json
+  {
+    "blocks": [
+      {
+        "id": "blk_3a4b5c",
+        "title": "Gym Session",
+        "block_type": "personal_interest",
+        "interest_id": "int_1a2b3c4d",
+        "start_time": "2026-09-23T19:00:00Z",
+        "end_time": "2026-09-23T20:00:00Z",
+        "is_blackout": true
+      }
+    ]
+  }
+  ```
+
+#### `POST /availability/blocks`
+Creates a one-off commitment, blackout, or protected interest block.
 - **Request Body**:
-```json
-{
-  "opportunity_id": "opp_1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
-  "status": "saved",
-  "personal_notes": "Review submission tracks."
-}
-```
-- **Response `201 Created`** (or `200 OK` if already exists):
-```json
-{
-  "tracking_id": "trk_5a6b7c8d-9e0f-1a2b-3c4d-5e6f7a8b9c0d",
-  "opportunity_id": "opp_1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
-  "status": "saved",
-  "applied_at": null,
-  "personal_notes": "Review submission tracks.",
-  "created_at": "2026-03-31T14:30:00Z",
-  "updated_at": "2026-03-31T14:30:00Z"
-}
-```
-- **Errors**: `404 Not Found` (invalid opportunity ID), `422 Unprocessable Entity`.
+  ```json
+  {
+    "title": "Doctor Appointment",
+    "block_type": "hard_commitment",
+    "interest_id": null,
+    "start_time": "2026-09-24T14:00:00Z",
+    "end_time": "2026-09-24T15:30:00Z",
+    "is_blackout": true
+  }
+  ```
+- **Response (201 Created)**: Created block object.
+
+#### `DELETE /availability/blocks/{id}`
+Deletes a specific schedule block.
+- **Response (204 No Content)**.
 
 ---
 
-#### `PATCH /radar/{opportunity_id}`
-Update application lifecycle status, record application submission, or update private notes.
-- **Authorization**: Authenticated User
-- **Lifecycle Transition Rules**:
-  - Valid statuses: `saved`, `interested`, `applying`, `applied`, `selected`, `rejected`, `completed`, `archived`.
-  - When status transitions to `applied`: The backend automatically sets `applied_at = NOW()` and suppresses future pending proximity reminders.
-- **Request Body**:
-```json
-{
-  "status": "applied",
-  "personal_notes": "Submitted application via Devpost on April 1. Confirmation #9823."
-}
-```
-- **Response `200 OK`**: Returns updated tracking object.
-- **Errors**: `400 Bad Request` (invalid status enum), `404 Not Found`.
+### 5.4 Work Management (`/work`)
 
----
-
-#### `DELETE /radar/{opportunity_id}`
-Remove an opportunity from the user's personal radar (deletes tracking record, private notes, and pending reminders).
-- **Authorization**: Authenticated User
-- **Response `204 No Content`**
-- **Errors**: `404 Not Found`.
-
----
-
-### 13.5 Dashboard (`/dashboard`)
-
-#### `GET /dashboard/overview`
-Aggregated dashboard endpoint powering urgency tiers, counts, and active pipeline cards in a single, low-latency call.
-- **Authorization**: Authenticated User
-- **Response `200 OK`**:
-```json
-{
-  "counts": {
-    "total_tracked": 8,
-    "urgent_24h": 1,
-    "urgent_3d": 2,
-    "urgent_7d": 4,
-    "overdue": 1,
-    "active_applications": 3
-  },
-  "urgent_radar": [
-    {
-      "opportunity_id": "opp_1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
-      "title": "Global AI Hackathon 2026",
-      "organization_name": "Devpost & OpenAI",
-      "category": "hackathon",
-      "deadline": "2026-04-01T18:00:00Z",
-      "time_remaining_seconds": 21600,
-      "urgency_tier": "urgent_24h",
-      "status": "applying",
-      "application_url": "https://globalai.devpost.com"
-    }
-  ],
-  "active_applications": [
-    {
-      "opportunity_id": "opp_2b3c4d5e-6f7a-8b9c-0d1e-2f3a4b5c6d7e",
-      "title": "Google Summer Internship 2026",
-      "organization_name": "Google",
-      "status": "applied",
-      "applied_at": "2026-03-25T11:00:00Z",
-      "application_url": "https://careers.google.com"
-    }
-  ],
-  "overdue_reconciliation": [
-    {
-      "opportunity_id": "opp_3c4d5e6f-7a8b-9c0d-1e2f-3a4b5c6d7e8f",
-      "title": "Spring Code Jam",
-      "organization_name": "Codeforces",
-      "deadline": "2026-03-30T23:59:59Z",
-      "status": "saved",
-      "prompt": "Deadline passed yesterday. Did you apply?"
-    }
-  ]
-}
-```
-
----
-
-#### `GET /dashboard/calendar`
-Returns opportunities grouped by deadline date for rendering monthly or weekly grid calendars.
-- **Authorization**: Authenticated User
+#### `GET /work`
+Lists user's work items with multi-criteria filtering, sorting, and pagination.
 - **Query Parameters**:
-  - `start_date` (ISO date string, e.g. `2026-04-01`, required): Start of window.
-  - `end_date` (ISO date string, e.g. `2026-04-30`, required): End of window.
-- **Response `200 OK`**:
-```json
-{
-  "events": [
-    {
-      "date": "2026-04-15",
+  - `status`: `todo`, `in_progress`, `blocked`, `completed`, `abandoned`
+  - `category`: `academic`, `project`, `exam_prep`, `career`, `administrative`, `personal`
+  - `risk_state`: `safe`, `watch`, `at_risk`, `critical`, `overdue`
+  - `due_before`: ISO UTC timestamp
+  - `sort_by`: `dynamic_priority` (default), `deadline`, `remaining_effort`, `created_at`
+  - `order`: `asc` or `desc`
+  - `page`: integer (default 1)
+  - `page_size`: integer (default 20, max 100)
+- **Response (200 OK)**:
+  ```json
+  {
+    "items": [
+      {
+        "id": "wi_9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+        "title": "Machine Learning Research Report",
+        "description": "Final comparative benchmark on Transformers vs RNNs",
+        "category": "academic",
+        "status": "in_progress",
+        "importance_weight": 1.5,
+        "deadline_utc": "2026-09-25T23:59:59Z",
+        "is_hard_deadline": true,
+        "total_estimated_hours": 7.0,
+        "remaining_estimated_hours": 4.5,
+        "total_actual_hours": 2.5,
+        "risk_state": "at_risk",
+        "risk_ratio": 1.25,
+        "dynamic_priority": 84.5,
+        "priority_explanation": "4.5h remaining with only 3.6h suitable capacity before Friday deadline.",
+        "units_count": 5,
+        "completed_units_count": 2,
+        "created_at": "2026-09-18T14:00:00Z",
+        "updated_at": "2026-09-20T10:15:00Z"
+      }
+    ],
+    "total": 1,
+    "page": 1,
+    "page_size": 20,
+    "has_more": false
+  }
+  ```
+
+#### `POST /work`
+Creates a new work item. Can accept optional decomposition units directly.
+- **Request Body**:
+  ```json
+  {
+    "title": "Compiler Construction Assignment 3",
+    "description": "Implement lexical analyzer and AST generation in C++",
+    "category": "academic",
+    "deadline_utc": "2026-09-28T22:00:00Z",
+    "is_hard_deadline": true,
+    "importance_weight": 1.2,
+    "estimated_hours": 6.0,
+    "initial_units": [
+      { "title": "Write Flex regex patterns", "estimated_hours": 2.0 },
+      { "title": "Implement AST node classes", "estimated_hours": 2.5 },
+      { "title": "Write integration test suite", "estimated_hours": 1.5 }
+    ]
+  }
+  ```
+- **Response (201 Created)**: Created work item object with computed baseline risk and priority.
+
+#### `GET /work/{id}`
+Retrieves a single work item along with its work units, estimates, and risk telemetry.
+- **Response (200 OK)**: Detailed work item object including nested `units: []`, `estimates: []`, and `active_session`.
+
+#### `PATCH /work/{id}`
+Updates work item fields (title, description, category, deadline, importance, status).
+- **Request Body**: Partial work item fields.
+- **Response (200 OK)**: Updated work item object with recalculated risk and priority.
+
+#### `DELETE /work/{id}`
+Deletes a work item and cascades deletion to units, estimates, and plan items (associated time entries retain reference for historical telemetry).
+- **Response (204 No Content)**.
+
+---
+
+### 5.5 Work Units / Subtasks (`/work/{work_id}/units`)
+
+#### `GET /work/{work_id}/units`
+Lists all subtasks for a work item in sequence order.
+- **Response (200 OK)**:
+  ```json
+  {
+    "units": [
+      {
+        "id": "wu_11223344",
+        "work_item_id": "wi_9b1deb4d",
+        "title": "Data Preprocessing & Cleaning",
+        "description": null,
+        "sequence_order": 1,
+        "is_completed": true,
+        "completed_at": "2026-09-19T16:00:00Z",
+        "estimated_hours": 1.5,
+        "actual_hours": 2.1,
+        "is_user_verified": true
+      },
+      {
+        "id": "wu_55667788",
+        "work_item_id": "wi_9b1deb4d",
+        "title": "Model Training & Hyperparameter Tuning",
+        "description": "Run 50 epochs over CIFAR-100",
+        "sequence_order": 2,
+        "is_completed": false,
+        "completed_at": null,
+        "estimated_hours": 3.0,
+        "actual_hours": 0.4,
+        "is_user_verified": false
+      }
+    ]
+  }
+  ```
+
+#### `POST /work/{work_id}/units`
+Adds a new work unit to an existing work item.
+- **Request Body**: `title`, `description`, `sequence_order`, `estimated_hours`.
+- **Response (201 Created)**: Created work unit.
+
+#### `PATCH /work/{work_id}/units/{unit_id}`
+Updates work unit fields, toggles completion, or modifies estimated hours.
+- **Request Body**:
+  ```json
+  {
+    "is_completed": true,
+    "actual_hours": 2.2
+  }
+  ```
+- **Response (200 OK)**: Updated unit with recalculation of parent work item remaining effort and risk.
+
+#### `PUT /work/{work_id}/units/reorder`
+Reorders work units in a single atomic transaction.
+- **Request Body**:
+  ```json
+  {
+    "unit_orders": [
+      { "unit_id": "wu_55667788", "sequence_order": 1 },
+      { "unit_id": "wu_11223344", "sequence_order": 2 }
+    ]
+  }
+  ```
+- **Response (200 OK)**: List of reordered units.
+
+---
+
+### 5.6 Time Tracking & Sessions (`/tracking`)
+
+#### `POST /tracking/sessions/start`
+Starts a real-time stopwatch work session for a work item and optional work unit.
+- **Request Body**:
+  ```json
+  {
+    "work_item_id": "wi_9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+    "work_unit_id": "wu_55667788",
+    "notes": "Tuning learning rate on baseline model"
+  }
+  ```
+- **Validation**: Enforces only one active session per user. If a session is already active, returns `409 Conflict` (`ACTIVE_SESSION_EXISTS`).
+- **Response (201 Created)**:
+  ```json
+  {
+    "session": {
+      "id": "sess_8a7b6c5d",
+      "work_item_id": "wi_9b1deb4d",
+      "work_unit_id": "wu_55667788",
+      "started_at": "2026-09-20T10:30:00Z",
+      "is_active": true
+    }
+  }
+  ```
+
+#### `GET /tracking/sessions/active`
+Retrieves currently active session if any, or null.
+- **Response (200 OK)**: Active session object or `null`.
+
+#### `POST /tracking/sessions/stop`
+Stops the active stopwatch, computes duration, records a completed `TimeEntry`, and triggers background pace factor re-estimation.
+- **Request Body**:
+  ```json
+  {
+    "notes": "Completed initial 3 runs. Learning rate adjusted to 1e-4."
+  }
+  ```
+- **Response (200 OK)**:
+  ```json
+  {
+    "time_entry": {
+      "id": "te_4d3c2b1a",
+      "work_item_id": "wi_9b1deb4d",
+      "work_unit_id": "wu_55667788",
+      "start_time": "2026-09-20T10:30:00Z",
+      "end_time": "2026-09-20T11:45:00Z",
+      "duration_minutes": 75,
+      "source": "stopwatch"
+    },
+    "work_item_remaining_hours": 3.75,
+    "pace_factor_updated": true
+  }
+  ```
+
+#### `POST /tracking/entries`
+Manually logs completed work time (for offline or retroactive work).
+- **Request Body**:
+  ```json
+  {
+    "work_item_id": "wi_9b1deb4d",
+    "work_unit_id": "wu_11223344",
+    "start_time": "2026-09-19T14:00:00Z",
+    "end_time": "2026-09-19T15:30:00Z",
+    "duration_minutes": 90,
+    "notes": "Offline reading of literature review"
+  }
+  ```
+- **Response (201 Created)**: Created `TimeEntry` record.
+
+#### `GET /tracking/entries`
+Lists historical time entries with date range and work item filters.
+- **Query Params**: `work_item_id`, `start_date`, `end_date`, `page`, `page_size`.
+- **Response (200 OK)**: Paginated array of time entries.
+
+---
+
+### 5.7 Daily Planning & Today Execution (`/planning` & `/today`)
+
+#### `POST /planning/generate`
+Deterministic, capacity-aware daily plan generator. Allocates today's available capacity to highest-priority work items and work units while protecting personal interests.
+- **Request Body**:
+  ```json
+  {
+    "target_date": "2026-09-20",
+    "max_hours": 4.0,
+    "include_interests": true
+  }
+  ```
+- **Response (200 OK)**:
+  ```json
+  {
+    "plan": {
+      "id": "plan_99887766",
+      "plan_date": "2026-09-20",
+      "total_planned_minutes": 240,
+      "total_completed_minutes": 75,
+      "is_finalized": false,
       "items": [
         {
-          "opportunity_id": "opp_1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
-          "title": "Global AI Hackathon 2026",
-          "category": "hackathon",
-          "deadline": "2026-04-15T23:59:59Z",
-          "status": "applying",
-          "is_rolling": false
+          "id": "pi_1111",
+          "work_item_id": "wi_9b1deb4d",
+          "work_unit_id": "wu_55667788",
+          "title": "Machine Learning Research Report — Model Training",
+          "planned_start": "2026-09-20T10:30:00Z",
+          "planned_end": "2026-09-20T12:00:00Z",
+          "duration_minutes": 90,
+          "sequence_order": 1,
+          "status": "in_progress"
+        },
+        {
+          "id": "pi_2222",
+          "work_item_id": "wi_33445566",
+          "work_unit_id": null,
+          "title": "Database Schema Optimization",
+          "planned_start": "2026-09-20T14:00:00Z",
+          "planned_end": "2026-09-20T15:30:00Z",
+          "duration_minutes": 90,
+          "sequence_order": 2,
+          "status": "pending"
+        },
+        {
+          "id": "pi_3333",
+          "work_item_id": null,
+          "work_unit_id": null,
+          "title": "Gym — Strength Training (Protected Interest)",
+          "planned_start": "2026-09-20T19:00:00Z",
+          "planned_end": "2026-09-20T20:00:00Z",
+          "duration_minutes": 60,
+          "sequence_order": 3,
+          "status": "pending"
         }
       ]
     }
-  ],
-  "rolling_opportunities": [
-    {
-      "opportunity_id": "opp_4d5e6f7a-8b9c-0d1e-2f3a-4b5c6d7e8f9a",
-      "title": "Open Source Fellowship (Rolling)",
-      "category": "fellowship",
-      "status": "saved"
-    }
-  ]
-}
-```
+  }
+  ```
+
+#### `GET /today/overview`
+Aggregates everything the user needs for today's operational command center.
+- **Response (200 OK)**:
+  ```json
+  {
+    "date": "2026-09-20",
+    "active_session": {
+      "session_id": "sess_8a7b6c5d",
+      "work_item_id": "wi_9b1deb4d",
+      "work_item_title": "Machine Learning Research Report",
+      "work_unit_title": "Model Training & Hyperparameter Tuning",
+      "started_at": "2026-09-20T10:30:00Z",
+      "elapsed_seconds": 2430
+    },
+    "now_recommendation": {
+      "work_item_id": "wi_9b1deb4d",
+      "title": "Model Training & Hyperparameter Tuning",
+      "duration_minutes": 90,
+      "reason": "Highest risk ratio (1.25) due in 5 days with competing workload."
+    },
+    "next_recommendation": {
+      "work_item_id": "wi_33445566",
+      "title": "Database Schema Optimization",
+      "duration_minutes": 90,
+      "planned_start": "2026-09-20T14:00:00Z"
+    },
+    "urgent_deadlines_count": 2,
+    "day_capacity_hours": 4.0,
+    "day_allocated_hours": 3.0,
+    "today_plan_items": [ ... ]
+  }
+  ```
+
+#### `PATCH /planning/items/{item_id}`
+Updates state of a plan item (`pending`, `in_progress`, `completed`, `dismissed`, `rescheduled`).
+- **Request Body**: `status`, `notes`.
+- **Response (200 OK)**: Updated plan item.
 
 ---
 
-### 13.6 Notifications (`/notifications`)
+### 5.8 Operational Radar & Timeline (`/dashboard`, `/timeline`, `/workload`)
+
+#### `GET /dashboard/summary`
+Main operational radar metrics: risk counts, urgent countdowns, workload pressure.
+- **Response (200 OK)**:
+  ```json
+  {
+    "risk_counts": {
+      "safe": 4,
+      "watch": 2,
+      "at_risk": 1,
+      "critical": 1,
+      "overdue": 0
+    },
+    "critical_items": [
+      {
+        "id": "wi_critical_1",
+        "title": "Operating Systems Lab 2",
+        "deadline_utc": "2026-09-21T18:00:00Z",
+        "remaining_estimated_hours": 4.0,
+        "available_hours_before_deadline": 2.5,
+        "risk_state": "critical",
+        "risk_ratio": 1.6
+      }
+    ],
+    "week_workload_hours": 24.5,
+    "week_capacity_hours": 20.0,
+    "capacity_status": "overloaded"
+  }
+  ```
+
+#### `GET /timeline/projection`
+Returns timeline projections for all active work items mapped against user's actual calendar capacity.
+- **Query Params**: `start_date`, `days` (default 14, max 60)
+- **Response (200 OK)**:
+  ```json
+  {
+    "timeline_window": {
+      "start_date": "2026-09-20T00:00:00Z",
+      "end_date": "2026-10-04T00:00:00Z"
+    },
+    "items": [
+      {
+        "work_item_id": "wi_9b1deb4d",
+        "title": "Machine Learning Research Report",
+        "category": "academic",
+        "risk_state": "at_risk",
+        "deadline_utc": "2026-09-25T23:59:59Z",
+        "remaining_estimated_hours": 4.5,
+        "projected_completion_utc": "2026-09-26T12:00:00Z",
+        "is_projected_late": true,
+        "allocated_slots": [
+          { "date": "2026-09-20", "hours": 1.5 },
+          { "date": "2026-09-21", "hours": 2.0 },
+          { "date": "2026-09-23", "hours": 1.0 }
+        ]
+      }
+    ]
+  }
+  ```
+
+#### `GET /workload/capacity`
+Aggregates capacity vs demand grouped by day or week.
+- **Query Params**: `view` (`day` or `week`), `start_date`, `end_date`.
+- **Response (200 OK)**:
+  ```json
+  {
+    "periods": [
+      {
+        "date_label": "2026-09-20",
+        "day_of_week": "Sunday",
+        "capacity_hours": 4.0,
+        "demand_hours": 5.5,
+        "utilization_percentage": 137.5,
+        "is_overloaded": true
+      }
+    ]
+  }
+  ```
+
+---
+
+### 5.9 AI Intelligence Services (`/ai`)
+
+#### `POST /ai/decompose`
+Decomposes unstructured work description into logical, actionable subtasks with baseline effort estimates.
+- **Request Body**:
+  ```json
+  {
+    "title": "Finish Machine Learning Research Report",
+    "description": "Comparative benchmark of Transformers vs RNNs on time-series data with ablation study and 10-page IEEE conference paper.",
+    "category": "academic",
+    "target_deadline": "2026-09-25T23:59:59Z"
+  }
+  ```
+- **Validation**: Title required (min 3 chars). Rate limited to 10 req/minute per user.
+- **Response (200 OK)**:
+  ```json
+  {
+    "suggested_category": "academic",
+    "total_estimated_hours": 8.0,
+    "confidence_score": 0.82,
+    "reasoning_summary": "Estimated based on empirical complexity of empirical evaluation and report writeup.",
+    "suggested_units": [
+      {
+        "sequence_order": 1,
+        "title": "Dataset Preprocessing & Validation",
+        "description": "Clean raw time-series records, construct train/val/test splits",
+        "estimated_hours": 1.5
+      },
+      {
+        "sequence_order": 2,
+        "title": "Model Training & Hyperparameter Tuning",
+        "description": "Train Transformer and LSTM benchmarks across learning rates",
+        "estimated_hours": 3.0
+      },
+      {
+        "sequence_order": 3,
+        "title": "Evaluation & Ablation Experiments",
+        "description": "Compute RMSE and latency metrics, plot comparative graphs",
+        "estimated_hours": 1.5
+      },
+      {
+        "sequence_order": 4,
+        "title": "Draft IEEE Format Report",
+        "description": "Write Methodology, Results, and Conclusion sections",
+        "estimated_hours": 2.0
+      }
+    ],
+    "detected_missing_information": [
+      "No dataset size specified; assumed moderate benchmark dataset (< 100k samples)."
+    ]
+  }
+  ```
+- **Error Fallback**: If AI provider fails, returns `HTTP 200` with `confidence_score: 0.0` and fallback single unit with empty subtasks, permitting seamless manual completion.
+
+#### `POST /ai/estimate-effort`
+Provides single-task effort estimation with user pace factor adjustments.
+- **Request Body**:
+  ```json
+  {
+    "title": "Review Compiler Lab Flex rules",
+    "category": "academic",
+    "description": null
+  }
+  ```
+- **Response (200 OK)**:
+  ```json
+  {
+    "baseline_estimated_hours": 2.0,
+    "user_pace_factor": 1.25,
+    "adjusted_estimated_hours": 2.5,
+    "confidence_score": 0.78,
+    "explanation": "Standard 2h task adjusted upward by user's historical 1.25x pace on academic tasks."
+  }
+  ```
+
+---
+
+### 5.10 Personal Insights & Pace Telemetry (`/insights`)
+
+#### `GET /insights/summary`
+Returns user's empirical pace factors across work categories and estimation accuracy metrics.
+- **Response (200 OK)**:
+  ```json
+  {
+    "overall_pace_factor": 1.18,
+    "total_hours_logged": 42.5,
+    "total_hours_predicted": 36.0,
+    "estimation_bias": "underestimating",
+    "category_pace_factors": [
+      {
+        "category": "academic",
+        "pace_factor": 1.25,
+        "sample_count": 8,
+        "confidence": 0.85
+      },
+      {
+        "category": "project",
+        "pace_factor": 1.10,
+        "sample_count": 5,
+        "confidence": 0.72
+      },
+      {
+        "category": "exam_prep",
+        "pace_factor": 0.95,
+        "sample_count": 3,
+        "confidence": 0.60
+      }
+    ],
+    "accuracy_trend": [
+      { "week": "2026-W36", "mean_absolute_error_hours": 1.4 },
+      { "week": "2026-W37", "mean_absolute_error_hours": 0.8 }
+    ]
+  }
+  ```
+
+---
+
+### 5.11 Notifications (`/notifications`)
 
 #### `GET /notifications`
-List recent notifications for the authenticated user.
-- **Authorization**: Authenticated User
-- **Query Parameters**: `page` (default: 1), `limit` (default: 20).
-- **Response `200 OK`**:
-```json
-{
-  "items": [
-    {
-      "id": "notif_98765432-1a2b-3c4d-5e6f-7a8b9c0d1e2f",
-      "opportunity_id": "opp_1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
-      "type": "1_day",
-      "title": "Deadline in 24 Hours",
-      "message": "Global AI Hackathon 2026 closes tomorrow at 11:59 PM UTC. Complete your submission!",
-      "is_read": false,
-      "scheduled_for": "2026-04-14T23:59:59Z",
-      "created_at": "2026-04-14T23:59:59Z"
-    }
-  ],
-  "pagination": {
-    "page": 1,
-    "limit": 20,
-    "total_items": 1,
-    "total_pages": 1,
-    "has_next": false,
-    "has_prev": false
+Retrieves user notifications with unread counts.
+- **Query Params**: `status` (`all`, `unread`, `read`), `page`, `page_size`.
+- **Response (200 OK)**:
+  ```json
+  {
+    "unread_count": 2,
+    "items": [
+      {
+        "id": "notif_987654",
+        "work_item_id": "wi_critical_1",
+        "title": "Deadline Risk Escalation",
+        "message": "Operating Systems Lab 2 is now CRITICAL. 4h remaining with only 2.5h suitable capacity before tomorrow 18:00.",
+        "notification_type": "risk_escalation",
+        "urgency_level": "critical",
+        "is_read": false,
+        "created_at": "2026-09-20T08:00:00Z"
+      }
+    ]
   }
-}
-```
-
----
-
-#### `GET /notifications/unread-count`
-Fast, lightweight endpoint for live navbar badge counters.
-- **Authorization**: Authenticated User
-- **Response `200 OK`**:
-```json
-{
-  "unread_count": 3
-}
-```
-
----
+  ```
 
 #### `PATCH /notifications/{id}/read`
-Mark a single notification as read.
-- **Authorization**: Authenticated User
-- **Idempotency Rule**: Idempotent. Subsequent calls return `200 OK`.
-- **Response `200 OK`**:
-```json
-{
-  "id": "notif_98765432-1a2b-3c4d-5e6f-7a8b9c0d1e2f",
-  "is_read": true
-}
-```
-
----
+Marks a specific notification as read.
+- **Response (200 OK)**.
 
 #### `POST /notifications/read-all`
-Mark all unread notifications as read.
-- **Authorization**: Authenticated User
-- **Response `200 OK`**:
-```json
-{
-  "success": true,
-  "marked_count": 3
-}
-```
+Marks all user notifications as read in a single atomic operation.
+- **Response (200 OK)**: `{ "marked_count": 2 }`.
 
 ---
 
-### 13.7 AI Intelligence (`/ai`)
+## 6. Rate Limiting & Security Headers
 
-#### `POST /ai/extract`
-Parse raw unstructured announcement text or a webpage URL into a structured opportunity draft.
-- **Authorization**: Authenticated User
-- **Rate Limit**: 15 requests / minute
-- **Request Body**:
-```json
-{
-  "raw_text": "Join the Devpost AI Spring Sprint! Submissions close April 25, 2026 at 11:59pm EST. Open to college students globally. Cash prizes up to $10,000. Apply at https://springsprint.example.com",
-  "url": null
-}
-```
-- **Response `200 OK`**:
-```json
-{
-  "draft": {
-    "title": "Devpost AI Spring Sprint",
-    "organization_name": "Devpost",
-    "category": "hackathon",
-    "deadline": "2026-04-26T03:59:00Z",
-    "deadline_timezone": "EST",
-    "is_deadline_time_inferred": false,
-    "is_rolling": false,
-    "start_date": null,
-    "end_date": null,
-    "eligibility": "Open to college students globally.",
-    "location": "Remote",
-    "mode": "online",
-    "cost": 0.00,
-    "application_url": "https://springsprint.example.com",
-    "tags": ["ai", "hackathon", "student"],
-    "summary": "AI sprint offering $10,000 in cash prizes for global college students.",
-    "confidence_score": 0.95
-  },
-  "is_duplicate": false,
-  "existing_opportunity_id": null,
-  "warnings": []
-}
-```
-- **Defensive Error Behavior**: If LLM parsing fails or times out (>6.0s), the API returns `200 OK` with `draft: null`, `warnings: ["AI extraction timed out. Please enter details manually."]`, allowing the client to pre-fill the manual creation form with `raw_text` without blocking the user.
-
----
-
-### 13.8 Internal Services (`/internal`)
-
-These endpoints are strictly for scheduled worker loops and system maintenance. They are **not** exposed to regular client traffic.
-
-#### `POST /internal/ingestion/sync`
-Trigger external feed ingestion adapters.
-- **Authorization**: `X-Internal-Token` header required.
-- **Response `200 OK`**:
-```json
-{
-  "status": "completed",
-  "synced_sources": ["devpost", "unstop"],
-  "new_opportunities_count": 14,
-  "duplicates_skipped": 3
-}
-```
-
----
-
-#### `POST /internal/notifications/evaluate`
-Trigger milestone proximity evaluation sweep.
-- **Authorization**: `X-Internal-Token` header required.
-- **Response `200 OK`**:
-```json
-{
-  "status": "completed",
-  "eval_timestamp": "2026-04-14T23:59:59Z",
-  "notifications_generated": 18,
-  "notifications_suppressed": 5
-}
-```
-
----
-
-## 14. Status Codes
-
-| Code | Status | Usage Scenario |
-| :---: | :--- | :--- |
-| **200** | `OK` | Successful GET, PATCH, or idempotent POST execution. |
-| **201** | `Created` | Successful entity creation (`POST /opportunities`, `POST /radar`). |
-| **204** | `No Content` | Successful deletion (`DELETE /radar/{id}`) or session termination. |
-| **400** | `Bad Request` | Malformed JSON body or illegal lifecycle status transition. |
-| **401** | `Unauthorized` | Missing, expired, or corrupted Bearer JWT token. |
-| **403** | `Forbidden` | User attempted to mutate an opportunity or tracking record they do not own. |
-| **404** | `Not Found` | Target opportunity, tracking record, or user profile does not exist. |
-| **409** | `Conflict` | Duplicate unique constraint violation (e.g. email already exists). |
-| **422** | `Unprocessable Entity` | Pydantic schema validation error with field-level details. |
-| **429** | `Too Many Requests` | Rate limit exceeded. |
-| **500** | `Internal Server Error`| Unhandled server exception. |
-| **503** | `Service Unavailable` | External AI provider or database connection failure. |
-
----
-
-## 15. Idempotency
-
-- `DELETE /radar/{opportunity_id}`: Idempotent. Deleting an already removed tracking record returns `204 No Content`.
-- `PATCH /notifications/{id}/read`: Idempotent. Marking an already read notification returns `200 OK`.
-- `POST /radar`: Idempotent. Attempting to track an opportunity already on the user's radar returns `200 OK` with the existing tracking record rather than failing.
-
----
-
-## 16. Rate Limiting
-
-Rate limiting is enforced at the FastAPI gateway middleware to protect database and LLM resources:
-
-| Endpoint Group | Rate Limit (Per IP / User) | Window | Penalty |
-| :--- | :---: | :---: | :--- |
-| `POST /auth/login`, `POST /auth/register` | 10 requests | 1 minute | `429 Too Many Requests` |
-| `POST /ai/extract` | 15 requests | 1 minute | `429 Too Many Requests` |
-| `GET /opportunities` (Catalog browsing) | 120 requests | 1 minute | `429 Too Many Requests` |
-| General Authenticated User Routes | 180 requests | 1 minute | `429 Too Many Requests` |
-
----
-
-## 17. Open API Questions
-
-| # | Question | Impact | Options | Decision / Working Assumption |
-| :-: | :--- | :--- | :--- | :--- |
-| **OA-1** | Should `/radar` return embedded opportunity summaries or require a secondary request? | Affects mobile bandwidth vs. request chattiness. | (A) Embedded opportunity summary<br>(B) Opportunity ID only | **Decision**: Embedded opportunity summary. Eliminates N+1 client queries and renders radar grids in a single network round-trip. |
-| **OA-2** | How should the API expose AI confidence scores? | Affects UI transparency vs. user confusion. | (A) Expose raw float (0.00 to 1.00)<br>(B) Expose discrete tier (`high`, `medium`, `low`) | **Decision**: Expose `confidence_score` as float with a boolean `is_user_verified`. The client UI maps scores >= 0.85 as High confidence. |
-| **OA-3** | Should notification polling support SSE/WebSockets for MVP? | Affects backend concurrency and frontend complexity. | (A) In-app HTTP polling on navigation (`GET /notifications/unread-count`)<br>(B) WebSockets / SSE connection | **Decision**: HTTP polling on route change + 60s interval. WebSockets deferred post-MVP. |
+1. **Rate Limiting**:
+   - General API endpoints: `100 requests per minute` per authenticated user IP / user ID.
+   - AI endpoints (`/ai/decompose`, `/ai/estimate-effort`): `10 requests per minute` per user.
+   - Limit exceeded triggers `HTTP 429 Too Many Requests` with `Retry-After: <seconds>` header.
+2. **Security Headers**:
+   - `X-Content-Type-Options: nosniff`
+   - `X-Frame-Options: DENY`
+   - `Strict-Transport-Security: max-age=31536000; includeSubDomains`
+   - `Content-Security-Policy: default-src 'self'`

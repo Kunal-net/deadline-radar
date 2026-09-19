@@ -47,7 +47,7 @@ flowchart TD
     end
 
     subgraph ExternalServices ["External Providers"]
-        LLM[AI Extraction API (Gemini / Claude)]
+        LLM[AI Intelligence API (Gemini / Claude / OpenAI)]
         Email[Transactional Email (Resend / SES)]
     end
 

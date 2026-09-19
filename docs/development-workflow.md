@@ -15,9 +15,9 @@ The Deadline Radar repository follows a structured, documentation-driven progres
 | **Phase 2** | **System Architecture Design** | `docs/architecture.md` | **COMPLETE** |
 | **Phase 3** | **Database Schema & Data Modeling** | `docs/database-schema.md` | **COMPLETE** |
 | **Phase 4** | **API Contract Specification** | `docs/api-contract.md` | **COMPLETE** |
-| **Phase 5** | **AI Subsystem Specification** | `docs/ai-model-spec.md` | **NEXT PHASE** |
-| **Phase 6** | **Frontend UI/UX Specification** | `docs/frontend-spec.md` | Pending |
-| **Phase 7** | **Backend Core Implementation** | `backend/` | Pending |
+| **Phase 5** | **AI Subsystem Specification** | `docs/ai-model-spec.md` | **COMPLETE** |
+| **Phase 6** | **Frontend UI/UX Specification** | `docs/frontend-spec.md` & `docs/design.md` | **COMPLETE** |
+| **Phase 7** | **Backend Core Implementation** | `backend/` | **NEXT PHASE** |
 | **Phase 8** | **AI Layer Implementation** | `ai-model/` | Pending |
 | **Phase 9** | **Frontend Client Implementation** | `frontend/` | Pending |
 | **Phase 10** | **End-to-End Integration & Testing** | `tests/` | Pending |
@@ -154,7 +154,7 @@ Next recommended step:
 ## Branching & Commit Conventions
 - Use descriptive branch names: `feature/short-description`, `fix/issue-description`, `docs/doc-name`.
 - Use conventional commit messages:
-  - `feat(backend): add deadline proximity calculation service`
-  - `fix(api): handle null start_date on opportunity creation`
-  - `docs: update api contract for /dashboard/overview`
-  - `test(ai): add unit tests for date extraction parser`
+  - `feat(backend): implement deterministic deadline risk ratio calculation`
+  - `fix(api): handle missing unit estimated_hours in work decomposition`
+  - `docs: update api contract for /today/overview and /planning/generate`
+  - `test(tracking): add unit tests for stopwatch active session transitions`

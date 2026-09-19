@@ -1,39 +1,37 @@
-# AI & Machine Learning Module — Deadline Radar
+# AI & Intelligence Subsystem — Deadline Radar
 
 ## Purpose
-The `ai-model/` directory houses the machine learning models, extraction pipelines, prompt templates, and natural language processing logic for **Deadline Radar**. It provides modular intelligence for:
-- Unstructured deadline and metadata extraction (from text, URLs, or announcements)
-- Automatic classification of opportunities into domains (Hackathons, Internships, Scholarships, etc.)
-- Opportunity summarization and key eligibility parsing
-- Deduplication of opportunities from multiple sources
-- Semantic search and user personalization
+The `ai-model/` directory houses the prompt templates, evaluation datasets, benchmark test suites, and provider integrations for **Deadline Radar**. It delivers modular intelligence to assist users in understanding work complexity, breaking large projects into actionable units, estimating initial baseline effort, and detecting missing information.
 
-## Dataset
-- **Status**: `TODO — DATASET CURATION`
-- Currently, no static dataset exists. Data will be collected from curated public opportunity notices, synthetic samples, and user-provided inputs.
-- Training/fine-tuning datasets and validation splits will be documented under `data/` and excluded from git version control via `.gitignore`.
+## Core Responsibilities
+- **Natural Language Work Parsing**: Extracting structured work item titles, descriptions, categories, and target deadlines from freeform text.
+- **Work Item Decomposition**: Decomposing complex tasks into 3 to 8 sequential, manageable work units sized between 30 minutes and 3 hours.
+- **Baseline Effort Estimation**: Providing initial hour estimates with confidence bounds for novel tasks where no user history exists.
+- **Missing Information Detection**: Flagging ambiguous requirements (e.g. unstated rubrics, dataset sizes, submission formatting rules).
+- **Evaluation Suite**: Running automated benchmarking suites against test prompt datasets (`tests/eval_decomposition.jsonl`) to guarantee 100% Pydantic schema adherence.
 
-## Training
-- Pipeline specifications for fine-tuning open models or training lightweight classifiers (e.g. Scikit-learn, SetFit, or Hugging Face Transformers) will be defined here.
-- Any heavy training scripts must run decoupled from the core API web server.
+## Critical Architectural Boundary: Generative vs. Deterministic
+The AI subsystem strictly enforces the distinction between generative reasoning and deterministic mathematics:
 
-## Evaluation
-- Standardized benchmarks will evaluate:
-  - **Extraction Accuracy**: Exact-match and F1 score on critical date fields (Deadline, Start Date, End Date).
-  - **Classification Metrics**: Precision, Recall, and F1 across opportunity taxonomy categories.
-  - **Deduplication Precision**: Minimizing false duplicates while clustering identical events across different platforms.
+- **Generative AI Tasks (LLM)**: Semantic parsing, task decomposition, and heuristic sizing.
+- **Deterministic Math (Python/SQL)**: Deadline risk ratio ($R = E_r / H_a$), dynamic priority scores ($S$), and empirical pace factor learning ($P_{t} = 0.2 \cdot \text{Ratio} + 0.8 \cdot P_{t-1}$). **LLMs are never permitted to calculate risk or priority scores.**
 
-## Inference
-- Inference engines may run as:
-  1. A standalone microservice (e.g. FastAPI serving a small Transformer/ONNX model)
-  2. Direct client calls to structured LLM APIs (e.g. Claude, Gemini, OpenAI) using typed schemas (Pydantic / Instructor)
-  3. Local embedding models (e.g. Sentence-Transformers) for semantic search
+## Model Serving & Provider Abstractions
+- Decoupled from the backend API via a pluggable provider interface (`AIServiceInterface`).
+- Supported providers:
+  1. **Google Gemini** (`gemini-1.5-flash` / `gemini-1.5-pro`) via Google GenAI SDK with structured JSON outputs.
+  2. **Anthropic Claude** (`claude-3-5-haiku` / `claude-3-5-sonnet`) via Anthropic SDK.
+  3. **OpenAI** (`gpt-4o-mini` / `gpt-4o`) with strict JSON schema enforcement.
+  4. **MockAIService**: Deterministic local stub for unit tests, offline development, and CI/CD pipelines (zero API cost, zero network latency).
 
-## Model Serving & Backend Integration
-- Decoupled from the primary CRUD backend: the backend interacts with AI capabilities via an abstracted client interface.
-- Asynchronous execution: heavy or slow AI extraction tasks will execute via background jobs or task queues to keep API response times minimal.
+## Evaluation & Benchmarks
+- Automated evaluation runs in CI:
+  - **Schema Validation Pass Rate**: Must be 100% Pydantic compliant.
+  - **Subtask Plausibility**: Verified to produce between 3 and 8 units with durations between 0.5h and 3.0h.
+  - **Resilience**: Verified to fall back gracefully to manual input when provider times out or errors.
 
 ## Relevant Documentation
 - [AI Model Specification](../docs/ai-model-spec.md)
 - [Architecture Overview](../docs/architecture.md)
 - [API Contract](../docs/api-contract.md)
+- [Development Workflow](../docs/development-workflow.md)

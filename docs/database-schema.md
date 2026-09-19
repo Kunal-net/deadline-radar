@@ -2,14 +2,11 @@
 
 ## 1. Database Overview
 
-This document defines the production-grade relational database design for **Deadline Radar**. It translates the product requirements from [docs/prd.md](file:///Users/kunalsuryanshi/Documents/Projectsnew/deadline-radar/docs/prd.md) and the system architecture from [docs/architecture.md](file:///Users/kunalsuryanshi/Documents/Projectsnew/deadline-radar/docs/architecture.md) into an authoritative, normalized, and performant data architecture.
+This document defines the production-grade relational database design for **Deadline Radar**. It establishes the authoritative data architecture supporting personalized deadline monitoring, cognitive workload management, dynamic prioritization, empirical time tracking, and adaptive daily planning as specified in [docs/prd.md](file:///Users/kunalsuryanshi/Documents/Projectsnew/deadline-radar/docs/prd.md) and [docs/architecture.md](file:///Users/kunalsuryanshi/Documents/Projectsnew/deadline-radar/docs/architecture.md).
 
-The database is designed to:
-- Enforce strict relational integrity and user data isolation across multi-stage application lifecycles.
-- Enable high-efficiency range indexing for time-critical proximity queries (`<24h`, `<3d`, `<7d`).
-- Cleanly separate authoritative opportunity source data from AI-derived metadata and extraction artifacts.
-- Provide a robust foundation for automated ingestion deduplication across multiple external platforms.
-- Support seed taxonomies and user preferences while remaining easily extensible for future phases (e.g. vector search, calendar subscriptions).
+The database is designed around two foundational pillars:
+- **WORK**: Hierarchical modeling of commitments from overarching `work_items` down to atomic, measurable `work_units`.
+- **TIME & CAPACITY**: Accurate modeling of finite usable capacity (`time_availability`, `schedule_blocks`), empirical focus execution (`time_entries`), learned estimation personalization (`user_pace_factors`), and deterministic temporal risk (`work_items.risk_ratio`).
 
 ---
 
@@ -17,28 +14,32 @@ The database is designed to:
 
 ### 2.1 Engine & Configuration
 - **Database Engine**: **PostgreSQL 15+**
-- **Connection Model**: Asynchronous I/O via `asyncpg` driver in Python.
-- **ORM**: **SQLAlchemy 2.0** utilizing `AsyncSession` and Declarative 2.0 typed mappings.
+- **Connection Driver**: Asynchronous I/O via `asyncpg` in Python.
+- **ORM**: **SQLAlchemy 2.0** utilizing `AsyncSession` and Declarative 2.0 mapped columns.
 - **Migration Framework**: **Alembic** managing deterministic, version-controlled schema revisions.
 
 ### 2.2 Core Conventions
-- **Identifier Strategy**: **UUID v4** (`id UUID PRIMARY KEY DEFAULT gen_random_uuid()`) across all entities (except lookup taxonomy slugs). This prevents sequential enumeration attacks, supports distributed data ingestion, and enables client-side UUID generation.
+- **Primary Keys**: **UUID v4** (`id UUID PRIMARY KEY DEFAULT gen_random_uuid()`) across all core entities. Prevents enumeration attacks, enables safe client-side ID generation, and avoids ID collisions.
 - **Timestamp Strategy**: **UTC Invariant Storage**. All datetime columns strictly utilize `TIMESTAMP WITH TIME ZONE` (`TIMESTAMPTZ`), defaulting to `NOW()` / `timezone('utc', now())`.
 - **Naming Conventions**:
-  - Table names: Plural, lowercase `snake_case` (e.g., `opportunities`, `user_tracking`, `organizations`).
-  - Column names: Lowercase `snake_case` (e.g., `application_url`, `canonical_url`, `created_at`).
-  - Foreign key columns: `<singular_table>_id` (e.g., `user_id`, `opportunity_id`, `organization_id`).
-  - Index naming: `idx_<table_name>_<column_names>` or `uq_<table_name>_<column_names>`.
+  - Table names: Plural, lowercase `snake_case` (e.g., `work_items`, `work_units`, `time_entries`).
+  - Column names: Lowercase `snake_case` (e.g., `estimated_hours`, `actual_hours`, `risk_ratio`).
+  - Foreign key columns: `<singular_table>_id` (e.g., `user_id`, `work_item_id`, `work_unit_id`).
+  - Indexes: `idx_<table_name>_<column_names>` or `uq_<table_name>_<column_names>`.
 
 ---
 
 ## 3. Design Principles
 
-1. **Strict Separation of Authoritative Source Data vs. AI Metadata**: Core opportunity attributes (title, host organization, deadline, application URL) are persisted in the core `opportunities` table, while AI-generated summaries, confidence ratings, and extraction payloads reside in a dedicated 1-to-1 extension table (`opportunity_ai_metadata`).
-2. **Unified Application Lifecycle (No Duplicate Tracking Tables)**: Rather than maintaining fragmented `saved_opportunities` and `applications` tables, a single normalized `user_tracking` table manages the complete lifecycle state machine (`SAVED` through `ARCHIVED`), eliminating record deletion/re-insertion and broken foreign keys.
-3. **Normalized Organizations & Sources**: Entities hosting opportunities (`organizations`) and origin ingestion channels (`sources`) are normalized to prevent string duplication, track provenance, and enable platform-wide deduplication.
-4. **Row-Level User Isolation**: Every private record (user tracking, personal notes, notifications, preferences) contains an indexed, cascading foreign key to `users.id`.
-5. **No Premature Complexity**: Utilizes PostgreSQL's native capabilities (`tsvector`, `pg_trgm`, JSONB) for search, deduplication, and flexible metadata before considering external search clusters or vector databases.
+1. **Strict Distinction Between Authoritative, AI-Derived, and Observed Data**:
+   - `Authoritative Source Data`: User-provided titles, hard deadlines, importance ratings.
+   - `AI-Derived Data`: Baseline effort guesses and subtask suggestions (stored with confidence, always editable).
+   - `System-Calculated Data`: Deterministic risk ratios, dynamic priority scores, and available capacity.
+   - `Actual Observed Data`: Empirical timer timestamps, logged durations, and completion timestamps.
+2. **First-Class Time Availability & Protected Interests**: Time is not assumed to be an infinite void. Finite capacity is explicitly modeled by subtracting busy blocks and protected personal interests (gym, sleep, family) from raw clock time.
+3. **The Empirical Personalization Loop**: Actual execution durations logged in `time_entries` directly feed `user_pace_factors`, ensuring historical pacing calibration is recorded and queryable over time.
+4. **Row-Level User Data Isolation**: Every entity contains an indexed, cascading foreign key to `users.id`.
+5. **Deterministic Auditability**: Every major calculation is backed by explicit fields and audit timestamps (`created_at`, `updated_at`), avoiding black-box hidden states.
 
 ---
 
@@ -47,16 +48,19 @@ The database is designed to:
 | Entity | Purpose | Why It Exists | Lifecycle & Ownership |
 | :--- | :--- | :--- | :--- |
 | **`users`** | Core user identity & authentication credentials | Manages authentication and account status | User-owned; deleted on account termination |
-| **`user_preferences`** | Notification thresholds and feed filters | 1-to-1 extension of user profile for personalized settings | Created on registration; deleted with user |
-| **`organizations`** | Hosts, companies, and universities sponsoring opportunities | Eliminates duplicate strings (e.g., "Google", "MIT") and enables org-level opportunity filtering | System/catalog-wide; persists across opportunities |
-| **`categories`** | Standardized domain taxonomy (13 categories) | Slug-based classification for fast browsing and filtering | Static seed taxonomy; managed by system admins |
-| **`sources`** | Provenance channels (Devpost, Unstop, RSS, User) | Tracks data origin, crawler sync state, and attribution | System-wide ingestion metadata registry |
-| **`opportunities`** | Authoritative catalog of time-sensitive events | Central entity storing validated dates, links, and criteria | Public catalog entity; system or user-contributed |
-| **`opportunity_ai_metadata`** | AI-generated summaries, extraction confidence, and logs | Separates AI outputs and models from source facts | 1-to-1 extension of opportunity; cascades on delete |
-| **`tags`** | Keywords and technology labels | Provides multi-attribute tag filtering (e.g. `python`, `ai`) | Reusable global keywords |
-| **`opportunity_tags`** | Many-to-many junction between opportunities and tags | Associates opportunities with multiple keyword tags | Composite junction table |
-| **`user_tracking`** | Personal radar & application lifecycle states | Tracks user status (`SAVED` -> `APPLIED` -> `COMPLETED`) and private notes | Private to `user_id`; cascades on user or opportunity delete |
-| **`notifications`** | Scheduled and delivered proximity alerts | Dispatches milestone reminders (7d, 3d, 1d, day-of) | Private to `user_id`; scheduled and marked read/sent |
+| **`user_preferences`** | Schedule constraints, capacity limits, and alert toggles | 1-to-1 extension of user profile for personalized settings | Created on registration; deleted with user |
+| **`user_interests`** | Designated categories for protected personal time | Reserves time for gym, gaming, reading, rest, and well-being | User-owned; managed in settings |
+| **`time_availability`** | Weekly recurring schedule template | Defines normal working windows, classes, and recurring busy blocks | User-owned; weekly template |
+| **`schedule_blocks`** | Date-specific concrete calendar blocks | Stores concrete free, busy, and protected slots for specific dates | Generated from template / synced from calendar |
+| **`work_items`** | Overarching projects, assignments, and goals | The primary unit of commitments carrying deadlines and importance | User-owned; deleted or archived on completion |
+| **`work_units`** | Atomic decomposed subtasks within a work item | Overcomes task paralysis by breaking work into 30m–3h pieces | Child of work item; cascades on delete |
+| **`work_estimates`** | Explicit effort predictions (baseline, user, calibrated) | Records estimation variance and uncertainty ranges | Historical estimation log per work unit |
+| **`time_entries`** | Empirical logs of actual focused time spent | Records stopwatch sessions and manual time logs | Permanent empirical history for pace factor calibration |
+| **`user_pace_factors`** | Learned pace multiplier ($\text{Actual} / \text{Estimated}$) | Personalizes future estimates per category/domain | Calibrated continuously from completed work |
+| **`plans`** | Daily schedule plan container (e.g. for Today) | Manages proposed allocations of time blocks for a specific date | User-owned; 1 plan per user per date |
+| **`plan_items`** | Specific scheduled work unit time slot in a daily plan | Connects an available time block with a priority work unit | Child of plan; cascades on delete |
+| **`notifications`** | Alerts for capacity deficit, risk escalation, and deadlines | Alerts user to upcoming crunches, milestones, and morning plans | User-owned; marked read or dismissed |
+| **`ai_analyses`** | Audit logs of AI decomposition and estimation outputs | Separates raw LLM prompts and responses from active work data | System diagnostic log linked to user |
 
 ---
 
@@ -65,22 +69,27 @@ The database is designed to:
 ```mermaid
 erDiagram
     USERS ||--o| USER_PREFERENCES : configures
-    USERS ||--o{ USER_TRACKING : tracks
+    USERS ||--o{ USER_INTERESTS : defines
+    USERS ||--o{ TIME_AVAILABILITY : sets_schedule
+    USERS ||--o{ SCHEDULE_BLOCKS : allocates
+    USERS ||--o{ WORK_ITEMS : commits_to
+    USERS ||--o{ TIME_ENTRIES : logs
+    USERS ||--o{ USER_PACE_FACTORS : learns
+    USERS ||--o{ PLANS : schedules
     USERS ||--o{ NOTIFICATIONS : receives
-    USERS ||--o{ OPPORTUNITIES : contributes
+    USERS ||--o{ AI_ANALYSES : audits
 
-    ORGANIZATIONS ||--o{ OPPORTUNITIES : hosts
+    USER_INTERESTS ||--o{ TIME_AVAILABILITY : protects
+    USER_INTERESTS ||--o{ SCHEDULE_BLOCKS : tags
 
-    CATEGORIES ||--o{ OPPORTUNITIES : classifies
+    WORK_ITEMS ||--o{ WORK_UNITS : decomposes_into
+    WORK_ITEMS ||--o{ NOTIFICATIONS : triggers
 
-    SOURCES ||--o{ OPPORTUNITIES : ingests
+    WORK_UNITS ||--o{ WORK_ESTIMATES : has_predictions
+    WORK_UNITS ||--o{ TIME_ENTRIES : tracks_actuals
+    WORK_UNITS ||--o{ PLAN_ITEMS : allocated_to
 
-    OPPORTUNITIES ||--o| OPPORTUNITY_AI_METADATA : augments
-    OPPORTUNITIES ||--o{ USER_TRACKING : monitored_by
-    OPPORTUNITIES ||--o{ NOTIFICATIONS : triggers
-    OPPORTUNITIES ||--o{ OPPORTUNITY_TAGS : labeled_with
-
-    TAGS ||--o{ OPPORTUNITY_TAGS : applies_to
+    PLANS ||--o{ PLAN_ITEMS : contains
 
     USERS {
         uuid id PK
@@ -94,116 +103,124 @@ erDiagram
 
     USER_PREFERENCES {
         uuid user_id PK,FK
-        text[] preferred_categories
-        varchar preferred_mode
         varchar timezone
+        numeric daily_focus_capacity_hours
+        numeric focus_efficiency_factor
+        boolean remind_risk_escalation
         boolean remind_7_days
         boolean remind_3_days
         boolean remind_1_day
-        boolean remind_day_of
-        boolean email_alerts
+        boolean morning_plan_briefing
+        varchar briefing_time
         timestamptz updated_at
     }
 
-    ORGANIZATIONS {
+    USER_INTERESTS {
         uuid id PK
-        varchar name UK
-        varchar slug UK
-        varchar website_url
-        varchar logo_url
-        text description
-        timestamptz created_at
-        timestamptz updated_at
-    }
-
-    CATEGORIES {
-        varchar id PK
+        uuid user_id FK
         varchar name
-        text description
-        varchar icon
-        integer display_order
+        varchar color
+        numeric target_weekly_hours
+        boolean is_protected
         timestamptz created_at
     }
 
-    SOURCES {
+    WORK_ITEMS {
         uuid id PK
-        varchar name UK
-        varchar type
-        varchar base_url
-        boolean is_active
-        timestamptz last_sync_at
-        timestamptz created_at
-        timestamptz updated_at
-    }
-
-    OPPORTUNITIES {
-        uuid id PK
+        uuid user_id FK
         varchar title
-        uuid organization_id FK
-        varchar category_id FK
-        uuid source_id FK
-        varchar external_id
         text description
+        varchar category
+        smallint importance
         timestamptz deadline
+        varchar deadline_type
         varchar deadline_timezone
         boolean is_deadline_time_inferred
         boolean is_rolling
-        timestamptz start_date
-        timestamptz end_date
-        text eligibility
-        varchar location
-        varchar mode
-        numeric cost
-        varchar application_url
-        varchar canonical_url UK
         varchar status
-        uuid created_by_user_id FK
+        numeric estimated_hours
+        numeric actual_hours
+        smallint completion_pct
+        varchar risk_status
+        numeric risk_ratio
+        numeric priority_score
+        text priority_reason
+        text[] tags
+        timestamptz completed_at
         timestamptz created_at
         timestamptz updated_at
     }
 
-    OPPORTUNITY_AI_METADATA {
-        uuid opportunity_id PK,FK
-        text summary
-        jsonb eligibility_bullets
-        numeric confidence_score
-        varchar model_provider
-        jsonb raw_extraction_payload
-        boolean is_user_verified
-        timestamptz created_at
-        timestamptz updated_at
-    }
-
-    TAGS {
+    WORK_UNITS {
         uuid id PK
-        varchar name UK
+        uuid work_item_id FK
+        uuid user_id FK
+        varchar title
+        text description
+        integer order_index
+        numeric estimated_hours
+        numeric actual_hours
+        boolean is_completed
+        timestamptz completed_at
         timestamptz created_at
+        timestamptz updated_at
     }
 
-    OPPORTUNITY_TAGS {
-        uuid opportunity_id PK,FK
-        uuid tag_id PK,FK
-    }
-
-    USER_TRACKING {
+    TIME_ENTRIES {
         uuid id PK
         uuid user_id FK
-        uuid opportunity_id FK
+        uuid work_unit_id FK
+        timestamptz start_time
+        timestamptz end_time
+        integer duration_seconds
+        numeric duration_hours
+        varchar entry_type
+        text notes
+        timestamptz created_at
+    }
+
+    USER_PACE_FACTORS {
+        uuid id PK
+        uuid user_id FK
+        varchar category
+        numeric pace_factor
+        numeric total_estimated_hours
+        numeric total_actual_hours
+        integer sample_count
+        timestamptz updated_at
+    }
+
+    PLANS {
+        uuid id PK
+        uuid user_id FK
+        date date
+        numeric available_hours
+        numeric planned_hours
         varchar status
-        timestamptz applied_at
-        text personal_notes
-        jsonb reminder_override
         timestamptz created_at
         timestamptz updated_at
+    }
+
+    PLAN_ITEMS {
+        uuid id PK
+        uuid plan_id FK
+        uuid work_unit_id FK
+        time start_time
+        time end_time
+        integer duration_minutes
+        integer order_index
+        boolean is_completed
+        timestamptz created_at
     }
 
     NOTIFICATIONS {
         uuid id PK
         uuid user_id FK
-        uuid opportunity_id FK
+        uuid work_item_id FK
         varchar type
         varchar title
         text message
+        varchar severity
         boolean is_read
         timestamptz scheduled_for
         timestamptz sent_at
@@ -221,276 +238,308 @@ Stores registered user credentials, profile basics, and account status.
 | Column | Type | Constraints | Default | Description |
 | :--- | :--- | :--- | :--- | :--- |
 | `id` | UUID | PRIMARY KEY | `gen_random_uuid()` | Unique user identifier |
-| `email` | VARCHAR(255) | UNIQUE, NOT NULL | — | Case-insensitive user email |
-| `hashed_password` | VARCHAR(255) | NOT NULL | — | Argon2id or bcrypt hashed secret |
+| `email` | VARCHAR(255) | UNIQUE, NOT NULL | — | Case-insensitive login email |
+| `hashed_password` | VARCHAR(255) | NOT NULL | — | Argon2id / bcrypt hashed secret |
 | `full_name` | VARCHAR(255) | NOT NULL | — | Display name of the user |
-| `is_active` | BOOLEAN | NOT NULL | `TRUE` | Account active / suspended flag |
-| `created_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | Account creation timestamp |
-| `updated_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | Profile modification timestamp |
+| `is_active` | BOOLEAN | NOT NULL | `TRUE` | Account active / suspended status |
+| `created_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | Registration timestamp |
+| `updated_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | Profile update timestamp |
 
 ---
 
 ### 6.2 `user_preferences`
-1-to-1 profile extension storing notification preferences and discovery feed filter configurations.
+1-to-1 profile extension storing working capacity limits, focus efficiency, and alert toggles.
 
 | Column | Type | Constraints | Default | Description |
 | :--- | :--- | :--- | :--- | :--- |
 | `user_id` | UUID | PRIMARY KEY, REFERENCES `users(id)` ON DELETE CASCADE | — | Owning user reference |
-| `preferred_categories`| TEXT[] | NOT NULL | `ARRAY[]::TEXT[]` | Preferred category slugs for feed pre-filtering |
-| `preferred_mode` | VARCHAR(50) | NULLABLE | `NULL` | Preferred participation mode (`online`, `in_person`, `any`) |
-| `timezone` | VARCHAR(64) | NOT NULL | `'UTC'` | User local IANA timezone (e.g., `'Asia/Kolkata'`) |
-| `remind_7_days` | BOOLEAN | NOT NULL | `TRUE` | Milestone alert toggle (168h prior) |
-| `remind_3_days` | BOOLEAN | NOT NULL | `TRUE` | Milestone alert toggle (72h prior) |
-| `remind_1_day` | BOOLEAN | NOT NULL | `TRUE` | Milestone alert toggle (24h prior) |
-| `remind_day_of` | BOOLEAN | NOT NULL | `TRUE` | Milestone alert toggle (08:00 local time) |
-| `email_alerts` | BOOLEAN | NOT NULL | `FALSE` | Transactional email opt-in (post-MVP) |
-| `updated_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | Last preference update timestamp |
+| `timezone` | VARCHAR(64) | NOT NULL | `'UTC'` | User local IANA timezone (e.g. `'America/New_York'`) |
+| `daily_focus_capacity_hours`| NUMERIC(4, 2)| NOT NULL | `6.00` | Max realistic deep work focus hours per day |
+| `focus_efficiency_factor` | NUMERIC(3, 2)| NOT NULL | `0.75` | Focus discount ratio on gross open calendar time (0.50–0.90) |
+| `remind_risk_escalation` | BOOLEAN | NOT NULL | `TRUE` | Alert when a task escalates to `AT_RISK` or `CRITICAL` |
+| `remind_7_days` | BOOLEAN | NOT NULL | `TRUE` | 7-day proximity alert toggle |
+| `remind_3_days` | BOOLEAN | NOT NULL | `TRUE` | 3-day proximity alert toggle |
+| `remind_1_day` | BOOLEAN | NOT NULL | `TRUE` | 1-day proximity alert toggle |
+| `morning_plan_briefing` | BOOLEAN | NOT NULL | `TRUE` | Daily morning schedule briefing alert |
+| `briefing_time` | VARCHAR(5) | NOT NULL | `'08:00'` | Local time of day to deliver morning briefing (`HH:MM`) |
+| `updated_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | Last preference change timestamp |
 
 ---
 
-### 6.3 `organizations`
-Normalized entity representing companies, institutions, universities, and communities hosting opportunities.
+### 6.3 `user_interests`
+Designated categories for non-work commitments and protected personal well-being.
 
 | Column | Type | Constraints | Default | Description |
 | :--- | :--- | :--- | :--- | :--- |
-| `id` | UUID | PRIMARY KEY | `gen_random_uuid()` | Organization identifier |
-| `name` | VARCHAR(255) | UNIQUE, NOT NULL | — | Clean display name (e.g., `'Google'`, `'MIT'`) |
-| `slug` | VARCHAR(255) | UNIQUE, NOT NULL | — | URL-safe identifier (e.g., `'google'`, `'mit'`) |
-| `website_url` | VARCHAR(2048) | NULLABLE | `NULL` | Official organization website |
-| `logo_url` | VARCHAR(2048) | NULLABLE | `NULL` | CDN URL for organization logo icon |
-| `description` | TEXT | NULLABLE | `NULL` | Brief overview of the organization |
+| `id` | UUID | PRIMARY KEY | `gen_random_uuid()` | Interest identifier |
+| `user_id` | UUID | NOT NULL, REFERENCES `users(id)` ON DELETE CASCADE | — | Owning user reference |
+| `name` | VARCHAR(100) | NOT NULL | — | Label (e.g. `'Gym & Fitness'`, `'Reading'`, `'Family'`) |
+| `color` | VARCHAR(20) | NOT NULL | `'#10B981'` | Hex color token for UI rendering |
+| `target_weekly_hours`| NUMERIC(4, 2)| NOT NULL | `5.00` | Target hours per week to protect |
+| `is_protected` | BOOLEAN | NOT NULL | `TRUE` | If true, planner refuses to schedule work during this time |
+| `created_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | Creation timestamp |
+
+---
+
+### 6.4 `time_availability`
+Weekly recurring schedule template establishing working windows and recurring busy blocks.
+
+| Column | Type | Constraints | Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `id` | UUID | PRIMARY KEY | `gen_random_uuid()` | Availability slot identifier |
+| `user_id` | UUID | NOT NULL, REFERENCES `users(id)` ON DELETE CASCADE | — | Owning user reference |
+| `day_of_week` | SMALLINT | NOT NULL CHECK (`day_of_week` BETWEEN 0 AND 6) | — | 0 = Sunday, 1 = Monday, ..., 6 = Saturday |
+| `start_time` | TIME | NOT NULL | — | Start time of block (e.g. `09:00:00`) |
+| `end_time` | TIME | NOT NULL | — | End time of block (e.g. `12:00:00`) |
+| `slot_type` | VARCHAR(50) | NOT NULL | `'work_window'` | `'work_window'`, `'busy_block'`, `'protected_interest'` |
+| `title` | VARCHAR(255) | NOT NULL | — | Description (e.g. `'Morning Focus'`, `'Algorithms Lecture'`) |
+| `interest_id` | UUID | NULLABLE, REFERENCES `user_interests(id)` ON DELETE SET NULL | `NULL` | Associated interest if slot is protected |
+| `created_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | Creation timestamp |
+| `updated_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | Update timestamp |
+
+---
+
+### 6.5 `schedule_blocks`
+Concrete date-specific calendar blocks (working windows, busy slots, protected interests).
+
+| Column | Type | Constraints | Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `id` | UUID | PRIMARY KEY | `gen_random_uuid()` | Block identifier |
+| `user_id` | UUID | NOT NULL, REFERENCES `users(id)` ON DELETE CASCADE | — | Owning user reference |
+| `date` | DATE | NOT NULL | — | Concrete calendar date |
+| `start_time` | TIMESTAMPTZ | NOT NULL | — | Absolute start moment in UTC |
+| `end_time` | TIMESTAMPTZ | NOT NULL | — | Absolute end moment in UTC |
+| `duration_minutes` | INTEGER | NOT NULL | — | Block duration in minutes |
+| `block_type` | VARCHAR(50) | NOT NULL | `'work_window'` | `'work_window'`, `'busy_block'`, `'protected_interest'` |
+| `title` | VARCHAR(255) | NOT NULL | — | Title of calendar block |
+| `is_fixed` | BOOLEAN | NOT NULL | `TRUE` | True if immovable (e.g. lecture, job shift, flight) |
+| `external_event_id`| VARCHAR(255) | NULLABLE | `NULL` | Future Google/Apple Calendar event ID |
+| `created_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | Creation timestamp |
+| `updated_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | Modification timestamp |
+
+---
+
+### 6.6 `work_items`
+The primary commitment/project entity carrying temporal constraints, importance, and risk metrics.
+
+| Column | Type | Constraints | Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `id` | UUID | PRIMARY KEY | `gen_random_uuid()` | Work Item identifier |
+| `user_id` | UUID | NOT NULL, REFERENCES `users(id)` ON DELETE CASCADE | — | Owning user reference |
+| `title` | VARCHAR(255) | NOT NULL | — | Clear title (e.g. `'Distributed Systems Lab 3'`) |
+| `description` | TEXT | NULLABLE | `NULL` | Detailed notes, guidelines, or prompt |
+| `category` | VARCHAR(50) | NOT NULL | `'academic'` | `'academic'`, `'engineering'`, `'writing'`, `'career'`, `'research'`, `'personal'` |
+| `importance` | SMALLINT | NOT NULL CHECK (`importance` BETWEEN 1 AND 5) | `3` | Importance rating (1=Low to 5=Critical) |
+| `deadline` | TIMESTAMPTZ | NOT NULL | — | Target completion cutoff in UTC |
+| `deadline_type` | VARCHAR(20) | NOT NULL DEFAULT `'hard'` | `'hard'` | `'hard'` (strict cutoff) or `'soft'` (self-target) |
+| `deadline_timezone`| VARCHAR(64) | NOT NULL DEFAULT `'UTC'` | `'UTC'` | Source announcement timezone (e.g. `'EST'`, `'AoE'`) |
+| `is_deadline_time_inferred`| BOOLEAN | NOT NULL | `FALSE` | True if deadline specified date only (time defaulted to 23:59:59) |
+| `is_rolling` | BOOLEAN | NOT NULL | `FALSE` | True if open-ended / no strict calendar cutoff |
+| `status` | VARCHAR(50) | NOT NULL | `'not_started'` | `'not_started'`, `'in_progress'`, `'blocked'`, `'completed'`, `'archived'` |
+| `estimated_hours` | NUMERIC(6, 2)| NOT NULL | `0.00` | Aggregate estimated hours across all subtasks |
+| `actual_hours` | NUMERIC(6, 2)| NOT NULL | `0.00` | Cumulative actual hours logged in time entries |
+| `completion_pct` | SMALLINT | NOT NULL CHECK (`completion_pct` BETWEEN 0 AND 100) | `0` | Percentage of subtask effort completed |
+| `risk_status` | VARCHAR(50) | NOT NULL | `'safe'` | Dynamic state: `'safe'`, `'watch'`, `'at_risk'`, `'critical'`, `'overdue'` |
+| `risk_ratio` | NUMERIC(6, 3)| NULLABLE | `NULL` | Ratio: $\text{RemainingEffort} / \text{AvailableHours}$ |
+| `priority_score` | NUMERIC(5, 2)| NOT NULL | `0.00` | Dynamic priority ranking score (0.00 to 100.00) |
+| `priority_reason` | TEXT | NULLABLE | `NULL` | Human-readable explanation of current priority |
+| `tags` | TEXT[] | NOT NULL | `ARRAY[]::TEXT[]` | Keyword labels (e.g. `['python', 'systems']`) |
+| `completed_at` | TIMESTAMPTZ | NULLABLE | `NULL` | Final completion timestamp |
+| `created_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | Creation timestamp |
+| `updated_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | Modification timestamp |
+
+---
+
+### 6.7 `work_units`
+Atomic, measurable subtasks decomposed from a work item (30m–3h execution units).
+
+| Column | Type | Constraints | Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `id` | UUID | PRIMARY KEY | `gen_random_uuid()` | Work Unit identifier |
+| `work_item_id` | UUID | NOT NULL, REFERENCES `work_items(id)` ON DELETE CASCADE | — | Parent work item reference |
+| `user_id` | UUID | NOT NULL, REFERENCES `users(id)` ON DELETE CASCADE | — | Denormalized user ID for fast row isolation |
+| `title` | VARCHAR(255) | NOT NULL | — | Actionable title (e.g. `'Implement Raft election timer'`) |
+| `description` | TEXT | NULLABLE | `NULL` | Subtask details or acceptance criteria |
+| `order_index` | INTEGER | NOT NULL | `0` | Logical execution sequence |
+| `estimated_hours` | NUMERIC(5, 2)| NOT NULL | — | Estimated hours required for this subtask |
+| `actual_hours` | NUMERIC(5, 2)| NOT NULL | `0.00` | Cumulative actual logged hours |
+| `is_completed` | BOOLEAN | NOT NULL | `FALSE` | Completion status toggle |
+| `completed_at` | TIMESTAMPTZ | NULLABLE | `NULL` | Timestamp of completion |
+| `created_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | Creation timestamp |
+| `updated_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | Modification timestamp |
+
+---
+
+### 6.8 `work_estimates`
+Historical log of estimate predictions (AI baseline, user override, and personalized calibration).
+
+| Column | Type | Constraints | Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `id` | UUID | PRIMARY KEY | `gen_random_uuid()` | Estimate identifier |
+| `work_unit_id` | UUID | NOT NULL, REFERENCES `work_units(id)` ON DELETE CASCADE | — | Target subtask reference |
+| `estimated_by` | VARCHAR(50) | NOT NULL | `'ai_baseline'` | `'ai_baseline'`, `'user_override'`, `'personalized_calibrated'` |
+| `optimistic_hours` | NUMERIC(5, 2)| NULLABLE | `NULL` | Optimistic duration estimate |
+| `most_likely_hours`| NUMERIC(5, 2)| NOT NULL | — | Most likely point estimate |
+| `pessimistic_hours`| NUMERIC(5, 2)| NULLABLE | `NULL` | Pessimistic duration estimate |
+| `applied_pace_factor`| NUMERIC(4, 3)| NOT NULL | `1.000` | Pace multiplier applied during calculation |
+| `created_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | Snapshot timestamp |
+
+---
+
+### 6.9 `time_entries`
+Empirical records of focused work sessions logged by the user (the ground truth for learning).
+
+| Column | Type | Constraints | Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `id` | UUID | PRIMARY KEY | `gen_random_uuid()` | Time entry identifier |
+| `user_id` | UUID | NOT NULL, REFERENCES `users(id)` ON DELETE CASCADE | — | Owning user reference |
+| `work_unit_id` | UUID | NOT NULL, REFERENCES `work_units(id)` ON DELETE CASCADE | — | Associated subtask |
+| `start_time` | TIMESTAMPTZ | NOT NULL | — | Start moment in UTC |
+| `end_time` | TIMESTAMPTZ | NOT NULL | — | End moment in UTC |
+| `duration_seconds`| INTEGER | NOT NULL CHECK (`duration_seconds` > 0) | — | Net duration in seconds |
+| `duration_hours` | NUMERIC(5, 2)| NOT NULL | — | Duration in decimal hours |
+| `entry_type` | VARCHAR(50) | NOT NULL | `'active_timer'` | `'active_timer'` (live stopwatch) or `'manual_log'` |
+| `notes` | TEXT | NULLABLE | `NULL` | Session accomplishments or blockers |
 | `created_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | Record creation timestamp |
-| `updated_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | Record modification timestamp |
 
 ---
 
-### 6.4 `categories`
-Standardized slug-based taxonomy table for opportunity domains.
+### 6.10 `user_pace_factors`
+Personalized performance model maintaining domain-specific pace multipliers ($\text{Actual} / \text{Estimated}$).
 
 | Column | Type | Constraints | Default | Description |
 | :--- | :--- | :--- | :--- | :--- |
-| `id` | VARCHAR(50) | PRIMARY KEY | — | Slug (e.g. `'hackathon'`, `'internship'`) |
-| `name` | VARCHAR(100) | NOT NULL | — | Human-readable name (e.g. `'Hackathon'`) |
-| `description` | TEXT | NULLABLE | `NULL` | Detailed domain scope description |
-| `icon` | VARCHAR(50) | NULLABLE | `NULL` | UI icon identifier |
-| `display_order` | INTEGER | NOT NULL | `0` | Order in category selector carousels |
-| `created_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | Category registration timestamp |
+| `id` | UUID | PRIMARY KEY | `gen_random_uuid()` | Pace factor identifier |
+| `user_id` | UUID | NOT NULL, REFERENCES `users(id)` ON DELETE CASCADE | — | Owning user reference |
+| `category` | VARCHAR(50) | NOT NULL | — | Domain slug (e.g. `'academic'`, `'engineering'`, `'writing'`) |
+| `pace_factor` | NUMERIC(5, 3)| NOT NULL | `1.000` | Multiplier: $\sum \text{Actual} / \sum \text{Estimated}$ |
+| `total_estimated_hours`| NUMERIC(8, 2)| NOT NULL | `0.00` | Cumulative estimated hours across completed tasks |
+| `total_actual_hours`| NUMERIC(8, 2)| NOT NULL | `0.00` | Cumulative actual hours logged |
+| `sample_count` | INTEGER | NOT NULL | `0` | Number of completed subtasks informing this multiplier |
+| `updated_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | Last recalibration timestamp |
 
-*Standard Seed Slugs*: `hackathon`, `internship`, `scholarship`, `competition`, `coding_contest`, `fellowship`, `workshop`, `conference`, `certification`, `course`, `research_opportunity`, `job`, `event`.
+*Unique Constraint*: `UNIQUE (user_id, category)`.
 
 ---
 
-### 6.5 `sources`
-Catalog of external ingestion channels, scrapers, and platform providers.
+### 6.11 `plans` & `plan_items`
+Containers for daily adaptive schedules ("Today" View).
 
+**`plans`**:
 | Column | Type | Constraints | Default | Description |
 | :--- | :--- | :--- | :--- | :--- |
-| `id` | UUID | PRIMARY KEY | `gen_random_uuid()` | Source identifier |
-| `name` | VARCHAR(100) | UNIQUE, NOT NULL | — | Source slug (e.g. `'devpost'`, `'unstop'`, `'user_submission'`) |
-| `type` | VARCHAR(50) | NOT NULL | — | Ingestion mechanism (`'api'`, `'crawler'`, `'rss'`, `'user'`) |
-| `base_url` | VARCHAR(2048) | NULLABLE | `NULL` | Source root website URL |
-| `is_active` | BOOLEAN | NOT NULL | `TRUE` | Whether automatic ingestion is enabled |
-| `last_sync_at` | TIMESTAMPTZ | NULLABLE | `NULL` | Timestamp of last successful ingestion crawl |
-| `created_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | Record creation timestamp |
-| `updated_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | Record modification timestamp |
+| `id` | UUID | PRIMARY KEY | `gen_random_uuid()` | Plan identifier |
+| `user_id` | UUID | NOT NULL, REFERENCES `users(id)` ON DELETE CASCADE | — | Owning user reference |
+| `date` | DATE | NOT NULL | — | Schedule date |
+| `available_hours`| NUMERIC(4, 2)| NOT NULL | — | Usable deep work focus hours available on this date |
+| `planned_hours` | NUMERIC(4, 2)| NOT NULL | `0.00` | Sum of hours allocated in plan items |
+| `status` | VARCHAR(50) | NOT NULL | `'draft'` | `'draft'`, `'active'`, `'completed'` |
+| `created_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | Creation timestamp |
+| `updated_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | Modification timestamp |
+
+*Unique Constraint*: `UNIQUE (user_id, date)` — A user has at most one plan per date.
+
+**`plan_items`**:
+| Column | Type | Constraints | Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `id` | UUID | PRIMARY KEY | `gen_random_uuid()` | Plan item identifier |
+| `plan_id` | UUID | NOT NULL, REFERENCES `plans(id)` ON DELETE CASCADE | — | Parent plan reference |
+| `work_unit_id` | UUID | NOT NULL, REFERENCES `work_units(id)` ON DELETE CASCADE | — | Assigned subtask reference |
+| `start_time` | TIME | NOT NULL | — | Scheduled start time (e.g. `09:30:00`) |
+| `end_time` | TIME | NOT NULL | — | Scheduled end time (e.g. `11:00:00`) |
+| `duration_minutes`| INTEGER | NOT NULL | — | Scheduled block duration |
+| `order_index` | INTEGER | NOT NULL | `0` | Chronological sort order |
+| `is_completed` | BOOLEAN | NOT NULL | `FALSE` | Whether this planned block was executed |
+| `created_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | Item creation timestamp |
 
 ---
 
-### 6.6 `opportunities`
-Core catalog entity storing authoritative source facts, deadlines, eligibility, and links.
-
-| Column | Type | Constraints | Default | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `id` | UUID | PRIMARY KEY | `gen_random_uuid()` | Opportunity identifier |
-| `title` | VARCHAR(255) | NOT NULL | — | Opportunity title |
-| `organization_id` | UUID | NOT NULL, REFERENCES `organizations(id)` ON DELETE RESTRICT | — | Host organization reference |
-| `category_id` | VARCHAR(50) | NOT NULL, REFERENCES `categories(id)` ON DELETE RESTRICT | — | Taxonomy domain reference |
-| `source_id` | UUID | NULLABLE, REFERENCES `sources(id)` ON DELETE SET NULL | `NULL` | Provenance source reference |
-| `external_id` | VARCHAR(255) | NULLABLE | `NULL` | ID or slug in external source (e.g. Devpost slug) |
-| `description` | TEXT | NULLABLE | `NULL` | Full opportunity description |
-| `deadline` | TIMESTAMPTZ | NOT NULL | — | Application cutoff timestamp stored in UTC |
-| `deadline_timezone` | VARCHAR(64) | NULLABLE | `'UTC'` | Stated timezone in source announcement (e.g. `'EST'`) |
-| `is_deadline_time_inferred`| BOOLEAN | NOT NULL | `FALSE` | True if date lacked explicit time and defaulted to 23:59:59 |
-| `is_rolling` | BOOLEAN | NOT NULL | `FALSE` | Rolling admission indicator |
-| `start_date` | TIMESTAMPTZ | NULLABLE | `NULL` | Program or event start date |
-| `end_date` | TIMESTAMPTZ | NULLABLE | `NULL` | Program or event end date |
-| `eligibility` | TEXT | NULLABLE | `NULL` | Candidate restrictions, grade levels, prerequisites |
-| `location` | VARCHAR(255) | NULLABLE | `NULL` | City/region or "Remote" |
-| `mode` | VARCHAR(50) | NOT NULL | `'online'` | Format: `'online'`, `'in_person'`, `'hybrid'` |
-| `cost` | NUMERIC(10, 2)| NOT NULL | `0.00` | Registration/application fee in USD (0 for free) |
-| `application_url` | VARCHAR(2048)| NOT NULL | — | Official direct application link |
-| `canonical_url` | VARCHAR(2048)| UNIQUE, NOT NULL | — | Stripped URL (no query params) for deduplication |
-| `status` | VARCHAR(50) | NOT NULL | `'open'` | Global status: `'open'`, `'closing_soon'`, `'expired'` |
-| `created_by_user_id`| UUID | NULLABLE, REFERENCES `users(id)` ON DELETE SET NULL | `NULL` | Contributor user ID (null for system seeded) |
-| `created_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | Catalog creation timestamp |
-| `updated_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | Catalog update timestamp |
-
----
-
-### 6.7 `opportunity_ai_metadata`
-1-to-1 extension table isolating AI-generated artifacts, models, and confidence scores from source facts.
-
-| Column | Type | Constraints | Default | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `opportunity_id` | UUID | PRIMARY KEY, REFERENCES `opportunities(id)` ON DELETE CASCADE | — | Opportunity reference |
-| `summary` | TEXT | NULLABLE | `NULL` | AI-generated 2-sentence executive summary |
-| `eligibility_bullets` | JSONB | NULLABLE | `NULL` | Array of extracted requirement checklist strings |
-| `confidence_score` | NUMERIC(4, 3)| NULLABLE | `NULL` | Extraction model confidence score (0.000 to 1.000) |
-| `model_provider` | VARCHAR(100) | NULLABLE | `NULL` | Model identifier (e.g. `'gemini-1.5-flash'`) |
-| `raw_extraction_payload`| JSONB | NULLABLE | `NULL` | Full raw JSON output for diagnostic auditing |
-| `is_user_verified` | BOOLEAN | NOT NULL | `FALSE` | Whether user confirmed/corrected draft before save |
-| `created_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | Extraction execution timestamp |
-| `updated_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | Metadata update timestamp |
-
----
-
-### 6.8 `tags` & `opportunity_tags`
-Many-to-many keyword taxonomy for granular skill and topic filtering.
-
-**`tags`**:
-| Column | Type | Constraints | Default | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `id` | UUID | PRIMARY KEY | `gen_random_uuid()` | Tag identifier |
-| `name` | VARCHAR(50) | UNIQUE, NOT NULL | — | Lowercase keyword label (e.g. `'python'`, `'women-in-tech'`) |
-| `created_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | Tag creation timestamp |
-
-**`opportunity_tags`**:
-| Column | Type | Constraints | Default | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `opportunity_id` | UUID | REFERENCES `opportunities(id)` ON DELETE CASCADE | — | Opportunity reference |
-| `tag_id` | UUID | REFERENCES `tags(id)` ON DELETE CASCADE | — | Tag reference |
-
-*Primary Key*: `(opportunity_id, tag_id)`.
-
----
-
-### 6.9 `user_tracking`
-Unified personal radar table tracking user application lifecycle states, application timestamps, and private notes.
-
-| Column | Type | Constraints | Default | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `id` | UUID | PRIMARY KEY | `gen_random_uuid()` | Tracking record identifier |
-| `user_id` | UUID | NOT NULL, REFERENCES `users(id)` ON DELETE CASCADE | — | Tracking user reference |
-| `opportunity_id` | UUID | NOT NULL, REFERENCES `opportunities(id)` ON DELETE CASCADE | — | Target opportunity reference |
-| `status` | VARCHAR(50) | NOT NULL | `'saved'` | Personal stage: `'saved'`, `'interested'`, `'applying'`, `'applied'`, `'selected'`, `'rejected'`, `'completed'`, `'archived'` |
-| `applied_at` | TIMESTAMPTZ | NULLABLE | `NULL` | Timestamp when user marked status as `'applied'` |
-| `personal_notes` | TEXT | NULLABLE | `NULL` | User's private markdown notes and checklist |
-| `reminder_override`| JSONB | NULLABLE | `NULL` | Optional per-item notification toggle overrides |
-| `created_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | Timestamp added to personal radar |
-| `updated_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | Timestamp of last status change or note edit |
-
-*Unique Constraint*: `UNIQUE (user_id, opportunity_id)` — A user cannot track the same opportunity multiple times.
-
----
-
-### 6.10 `notifications`
-Dispatched and pending in-app alerts generated for approaching deadlines.
+### 6.12 `notifications`
+Alerts generated for capacity deficits, risk escalations, deadline proximity, and morning briefings.
 
 | Column | Type | Constraints | Default | Description |
 | :--- | :--- | :--- | :--- | :--- |
 | `id` | UUID | PRIMARY KEY | `gen_random_uuid()` | Notification identifier |
 | `user_id` | UUID | NOT NULL, REFERENCES `users(id)` ON DELETE CASCADE | — | Recipient user |
-| `opportunity_id` | UUID | NOT NULL, REFERENCES `opportunities(id)` ON DELETE CASCADE | — | Associated opportunity |
-| `type` | VARCHAR(50) | NOT NULL | — | Milestone: `'7_days'`, `'3_days'`, `'1_day'`, `'day_of'`, `'custom'` |
-| `title` | VARCHAR(255) | NOT NULL | — | Notification heading |
+| `work_item_id` | UUID | NULLABLE, REFERENCES `work_items(id)` ON DELETE CASCADE | `NULL` | Associated work item if applicable |
+| `type` | VARCHAR(50) | NOT NULL | — | `'capacity_deficit'`, `'risk_escalation'`, `'proximity_reminder'`, `'morning_briefing'` |
+| `title` | VARCHAR(255) | NOT NULL | — | Alert heading |
 | `message` | TEXT | NOT NULL | — | Actionable notification body |
-| `is_read` | BOOLEAN | NOT NULL | `FALSE` | Read/unread flag |
-| `scheduled_for` | TIMESTAMPTZ | NOT NULL | — | Target dispatch timestamp |
-| `sent_at` | TIMESTAMPTZ | NULLABLE | `NULL` | Actual delivery execution timestamp |
-| `created_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | Alert generation timestamp |
-
-*Unique Constraint*: `UNIQUE (user_id, opportunity_id, type)` — Guarantees duplicate alerts cannot be scheduled or sent for the same milestone.
+| `severity` | VARCHAR(20) | NOT NULL | `'info'` | Severity token: `'info'`, `'warning'`, `'critical'` |
+| `is_read` | BOOLEAN | NOT NULL | `FALSE` | Read / unread toggle |
+| `scheduled_for` | TIMESTAMPTZ | NOT NULL | — | Intended delivery timestamp |
+| `sent_at` | TIMESTAMPTZ | NULLABLE | `NULL` | Actual dispatch timestamp |
+| `created_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | Generation timestamp |
 
 ---
 
-## 7. Constraints
+### 6.13 `ai_analyses`
+Diagnostic audit logs capturing raw user prompts, model responses, and execution latency.
 
-### 7.1 Primary & Unique Constraints
-- `users`: `PRIMARY KEY (id)`, `UNIQUE (email)` (case-insensitive via unique index on `LOWER(email)`).
-- `organizations`: `PRIMARY KEY (id)`, `UNIQUE (name)`, `UNIQUE (slug)`.
-- `categories`: `PRIMARY KEY (id)`.
-- `sources`: `PRIMARY KEY (id)`, `UNIQUE (name)`.
-- `opportunities`: `PRIMARY KEY (id)`, `UNIQUE (canonical_url)`.
-- `tags`: `PRIMARY KEY (id)`, `UNIQUE (name)`.
-- `opportunity_tags`: `PRIMARY KEY (opportunity_id, tag_id)`.
-- `user_tracking`: `PRIMARY KEY (id)`, `UNIQUE (user_id, opportunity_id)`.
-- `notifications`: `PRIMARY KEY (id)`, `UNIQUE (user_id, opportunity_id, type)`.
-- `user_preferences`: `PRIMARY KEY (user_id)`.
-- `opportunity_ai_metadata`: `PRIMARY KEY (opportunity_id)`.
+| Column | Type | Constraints | Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `id` | UUID | PRIMARY KEY | `gen_random_uuid()` | Analysis log identifier |
+| `user_id` | UUID | NOT NULL, REFERENCES `users(id)` ON DELETE CASCADE | — | User requesting analysis |
+| `work_item_id` | UUID | NULLABLE, REFERENCES `work_items(id)` ON DELETE CASCADE | `NULL` | Associated work item if applicable |
+| `analysis_type` | VARCHAR(50) | NOT NULL | — | `'decomposition'`, `'work_parsing'`, `'plan_proposal'` |
+| `prompt_text` | TEXT | NOT NULL | — | Raw prompt text submitted to model |
+| `raw_response_payload`| JSONB | NOT NULL | — | Full raw JSON output from model |
+| `model_provider`| VARCHAR(100) | NOT NULL | — | Model ID (e.g. `'gemini-1.5-flash'`) |
+| `latency_ms` | INTEGER | NOT NULL | — | Inference round-trip latency |
+| `created_at` | TIMESTAMPTZ | NOT NULL | `NOW()` | Execution timestamp |
 
-### 7.2 Check Constraints
-- `opportunities.cost`: `CHECK (cost >= 0.00)`
-- `opportunities.mode`: `CHECK (mode IN ('online', 'in_person', 'hybrid'))`
-- `opportunities.status`: `CHECK (status IN ('open', 'closing_soon', 'expired'))`
-- `user_tracking.status`: `CHECK (status IN ('saved', 'interested', 'applying', 'applied', 'selected', 'rejected', 'completed', 'archived'))`
-- `notifications.type`: `CHECK (type IN ('7_days', '3_days', '1_day', 'day_of', 'custom'))`
-- `opportunity_ai_metadata.confidence_score`: `CHECK (confidence_score IS NULL OR (confidence_score >= 0.000 AND confidence_score <= 1.000))`
+---
 
-### 7.3 Foreign Key Cascades & Deletions
-- When a `user` is deleted: Cascades delete to `user_preferences`, `user_tracking`, and `notifications`. Setting `opportunities.created_by_user_id` to `NULL` preserves public opportunities submitted by that user.
-- When an `opportunity` is deleted: Cascades delete to `opportunity_ai_metadata`, `opportunity_tags`, `user_tracking`, and `notifications`.
-- When an `organization` has opportunities: Deletion is `RESTRICT`ed to prevent orphaned opportunities.
-- When a `category` has opportunities: Deletion is `RESTRICT`ed.
+## 7. Constraints & Data Integrity
+
+### 7.1 Check Constraints
+- `work_items.importance`: `CHECK (importance BETWEEN 1 AND 5)`
+- `work_items.completion_pct`: `CHECK (completion_pct BETWEEN 0 AND 100)`
+- `work_items.category`: `CHECK (category IN ('academic', 'engineering', 'writing', 'career', 'research', 'personal'))`
+- `work_items.status`: `CHECK (status IN ('not_started', 'in_progress', 'blocked', 'completed', 'archived'))`
+- `work_items.risk_status`: `CHECK (risk_status IN ('safe', 'watch', 'at_risk', 'critical', 'overdue'))`
+- `time_availability.day_of_week`: `CHECK (day_of_week BETWEEN 0 AND 6)`
+- `time_entries.duration_seconds`: `CHECK (duration_seconds > 0)`
+- `time_entries.start_time`: `CHECK (end_time >= start_time)`
+
+### 7.2 Unique Constraints
+- `users`: `UNIQUE (email)` (enforced case-insensitively via `LOWER(email)` index).
+- `user_pace_factors`: `UNIQUE (user_id, category)` — One pace factor per domain per user.
+- `plans`: `UNIQUE (user_id, date)` — One daily plan per user per calendar day.
 
 ---
 
 ## 8. Indexing Strategy
 
-Indexes are tailored to high-frequency query access patterns defined in the PRD and Architecture:
-
-### 8.1 Opportunity Discovery & Catalog Indexes
 ```sql
--- 1. Fast lookup of active, future deadlines sorted by urgency (Primary Discovery Query)
-CREATE INDEX idx_opportunities_deadline_open 
-ON opportunities (deadline ASC) 
-WHERE status = 'open' OR status = 'closing_soon';
+-- 1. Fast lookup of user's active work items ordered by deadline (Primary Dashboard Radar)
+CREATE INDEX idx_work_items_user_deadline 
+ON work_items (user_id, deadline ASC) 
+WHERE status NOT IN ('completed', 'archived');
 
--- 2. Category filtering with urgency ordering
-CREATE INDEX idx_opportunities_category_deadline 
-ON opportunities (category_id, deadline ASC);
+-- 2. Fast retrieval of critical and high-risk work items
+CREATE INDEX idx_work_items_risk 
+ON work_items (user_id, risk_status, priority_score DESC) 
+WHERE status NOT IN ('completed', 'archived');
 
--- 3. Mode and cost multi-attribute filtering
-CREATE INDEX idx_opportunities_mode_cost 
-ON opportunities (mode, cost, deadline ASC);
+-- 3. Subtask retrieval and ordering for work detail view
+CREATE INDEX idx_work_units_parent_order 
+ON work_units (work_item_id, order_index ASC);
 
--- 4. Organization profile listing
-CREATE INDEX idx_opportunities_org 
-ON opportunities (organization_id);
+-- 4. User schedule blocks by date range (Daily Planning & Timeline)
+CREATE INDEX idx_schedule_blocks_user_date 
+ON schedule_blocks (user_id, date ASC, start_time ASC);
 
--- 5. Canonical URL lookup for fast ingestion deduplication
-CREATE UNIQUE INDEX idx_opportunities_canonical_url 
-ON opportunities (canonical_url);
+-- 5. Time entry aggregation for pace factor calibration and insights
+CREATE INDEX idx_time_entries_user_workunit 
+ON time_entries (user_id, work_unit_id, start_time DESC);
 
--- 6. External source ID lookup for scraper sync
-CREATE INDEX idx_opportunities_source_external 
-ON opportunities (source_id, external_id) 
-WHERE external_id IS NOT NULL;
-```
-
-### 8.2 User Radar & Dashboard Urgency Indexes
-```sql
--- 7. Fetch user's tracking records by status (Dashboard 'Active Applications' & 'Saved')
-CREATE INDEX idx_user_tracking_user_status 
-ON user_tracking (user_id, status);
-
--- 8. Composite lookup for checking if user is already tracking an opportunity
-CREATE UNIQUE INDEX idx_user_tracking_lookup 
-ON user_tracking (user_id, opportunity_id);
-
--- 9. Dashboard urgent deadline join optimization
-CREATE INDEX idx_user_tracking_urgent_join 
-ON user_tracking (user_id, opportunity_id, status);
-```
-
-### 8.3 Notification Scheduler Indexes
-```sql
--- 10. Background worker index: Fast polling of pending alerts scheduled for dispatch
+-- 6. Notification polling for pending and unread alerts
 CREATE INDEX idx_notifications_pending 
 ON notifications (scheduled_for, sent_at) 
 WHERE sent_at IS NULL;
 
--- 11. User unread notification badge counter
-CREATE INDEX idx_notifications_user_unread 
+CREATE INDEX idx_notifications_unread 
 ON notifications (user_id, is_read) 
 WHERE is_read = FALSE;
 ```
@@ -499,70 +548,34 @@ WHERE is_read = FALSE;
 
 ## 9. Search Strategy
 
-### 9.1 PostgreSQL Native Full-Text Search (FTS)
-To avoid the operational overhead of external search clusters (Elasticsearch) during MVP, PostgreSQL's built-in `tsvector` and `tsquery` engine powers keyword search:
+- **Work Item Keyword Matching**:
+  - PostgreSQL full-text search indexing on `title` and `description`:
+    ```sql
+    ALTER TABLE work_items 
+    ADD COLUMN search_vector tsvector 
+    GENERATED ALWAYS AS (
+        setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
+        setweight(to_tsvector('english', coalesce(description, '')), 'B')
+    ) STORED;
 
-```sql
--- Generated tsvector column combining title and description
-ALTER TABLE opportunities 
-ADD COLUMN search_vector tsvector 
-GENERATED ALWAYS AS (
-    setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
-    setweight(to_tsvector('english', coalesce(description, '')), 'B')
-) STORED;
-
--- GIN index for high-speed full-text matching
-CREATE INDEX idx_opportunities_search_vector 
-ON opportunities USING GIN (search_vector);
-```
-
-### 9.2 Trigram Fuzzy Substring Search
-To support typo-tolerant substring matching on organization names and contest titles:
-```sql
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
-
-CREATE INDEX idx_opportunities_title_trgm 
-ON opportunities USING GIN (title gin_trgm_ops);
-
-CREATE INDEX idx_organizations_name_trgm 
-ON organizations USING GIN (name gin_trgm_ops);
-```
-
-### 9.3 Roadmap: Future Semantic Search via `pgvector`
-When natural language semantic queries are introduced post-MVP:
-1. Enable `CREATE EXTENSION IF NOT EXISTS vector;`
-2. Add column `embedding vector(384)` to `opportunity_ai_metadata`.
-3. Create an HNSW index:
-   ```sql
-   CREATE INDEX idx_ai_metadata_embedding 
-   ON opportunity_ai_metadata USING hnsw (embedding vector_cosine_ops);
-   ```
-This integrates semantic embeddings directly into PostgreSQL without requiring a separate vector database.
+    CREATE INDEX idx_work_items_search_vector 
+    ON work_items USING GIN (search_vector);
+    ```
+- **Fuzzy Tag and Title Matching**:
+  - `pg_trgm` extension enabled for fast typo-tolerant filtering on `work_items.title`.
 
 ---
 
 ## 10. Time & Timezone Strategy
 
-Deadline Radar's core value is eliminating missed deadlines, making timezone precision paramount:
-
-### 10.1 Invariant UTC Storage
-- All timestamp columns (`deadline`, `start_date`, `end_date`, `scheduled_for`, `sent_at`, `created_at`, `updated_at`) strictly use `TIMESTAMPTZ`.
-- When an API receives a deadline string, the backend parses the ISO 8601 string, applies the stated timezone offset, and commits the resulting UTC moment.
-
-### 10.2 Storing Provenance & Inferred Flags
-- `deadline_timezone`: Records the original timezone string published by the host (e.g. `'PST'`, `'Europe/London'`, `'AoE'`).
-- `is_deadline_time_inferred`: Boolean flag indicating whether the announcement provided an exact cutoff time or just a date.
-  - *Rule*: If an announcement states *"Deadline: November 15, 2026"* with no time specified, the system defaults the time to `23:59:59` in the host's local timezone (or UTC if unknown) and sets `is_deadline_time_inferred = TRUE`. This alerts the user that the exact hour was inferred.
-
-### 10.3 Anywhere on Earth (AoE) Handling
-- AoE is a standard academic/hackathon cutoff definition corresponding to `UTC-12:00`.
-- 23:59:59 AoE on Day $D$ translates deterministically to `11:59:59 UTC` on Day $D+1$. The ingestion pipeline converts AoE into this exact UTC timestamp.
-
-### 10.4 Rolling Admissions Handling
-- If an internship or grant has rolling admissions with no fixed closing date:
-  - `is_rolling` is set to `TRUE`.
-  - `deadline` is assigned a sentinel date far in the future (e.g. 1 year from creation) or filtered via `WHERE is_rolling = TRUE`.
-  - Rolling opportunities are excluded from false urgent countdowns and displayed under a distinct "Rolling / Open" shelf.
+1. **Universal UTC Persistence**:
+   - All columns representing moments in time (`deadline`, `start_time`, `end_time`, `created_at`) are stored as `TIMESTAMPTZ` in UTC.
+2. **Timezone Provenance**:
+   - `deadline_timezone` stores the source string (e.g. `'America/Los_Angeles'`, `'AoE'`).
+3. **Inferred Date-Only Deadlines**:
+   - When a user inputs an assignment due on a specific day without an hour, `is_deadline_time_inferred = TRUE` and the timestamp defaults to `23:59:59` in the user's local timezone.
+4. **Anywhere on Earth (AoE)**:
+   - Converted deterministically as `UTC-12:00` (e.g. 23:59:59 AoE on Day $D \rightarrow$ 11:59:59 UTC on Day $D+1$).
 
 ---
 
@@ -571,92 +584,47 @@ Deadline Radar's core value is eliminating missed deadlines, making timezone pre
 ```mermaid
 stateDiagram-v2
     direction LR
-    [*] --> DRAFT : AI Parsing / Ingestion
-    DRAFT --> OPEN : Validated & Persisted
-    OPEN --> CLOSING_SOON : Now() >= Deadline - 72h
-    CLOSING_SOON --> EXPIRED : Now() >= Deadline
-    EXPIRED --> ARCHIVED : Retention Policy / Manual Archive
+    [*] --> NOT_STARTED : Created
+    NOT_STARTED --> IN_PROGRESS : Subtask Started / Timer Logged
+    IN_PROGRESS --> BLOCKED : User Marks Blocked
+    BLOCKED --> IN_PROGRESS : Unblocked
+    IN_PROGRESS --> COMPLETED : All Subtasks Finished
+    COMPLETED --> ARCHIVED : User Dismisses from Radar
 ```
 
-### 11.1 Global Opportunity Lifecycle
-1. **DRAFT**: Temporary Pydantic schema in memory during user review of AI extraction.
-2. **OPEN**: Stored in `opportunities` with `status = 'open'`. Visible in general discovery catalog.
-3. **CLOSING_SOON**: Evaluated dynamically or updated by scheduled background job when `deadline <= NOW() + INTERVAL '72 hours'`.
-4. **EXPIRED**: Reached when `NOW() >= deadline`. Excluded from default discovery feeds but preserved in historical tracking.
+---
 
-### 11.2 User Application Lifecycle
-1. **SAVED**: Initial bookmark for consideration.
-2. **INTERESTED**: Prioritized by user.
-3. **APPLYING**: User actively drafting essays or gathering materials.
-4. **APPLIED**: User completed submission. `applied_at` recorded; pending notifications canceled.
-5. **SELECTED / REJECTED / COMPLETED**: Terminal outcome recorded by user.
-6. **ARCHIVED**: Dismissed from active dashboard views.
+## 12. Migration Strategy
+
+- **Tooling**: Alembic async migrations in `backend/alembic/`.
+- **Naming**: `<timestamp>_<action>.py` (e.g. `20260919_001_work_and_time_schema.py`).
+- **Reversibility**: Every migration file must contain tested, symmetric `upgrade()` and `downgrade()` functions.
 
 ---
 
-## 12. Data Integrity
+## 13. Seed Data Strategy
 
-- **No Dangling Foreign Keys**: All relationship paths enforce explicit cascading or restriction rules (`ON DELETE CASCADE` on child records, `ON DELETE RESTRICT` on reference taxonomies).
-- **Atomic Mutations**: Opportunities and user tracking associations are committed in single ACID transactions.
-- **Auditing**: `created_at` and `updated_at` timestamps are automatically populated via database defaults (`DEFAULT NOW()`) and updated via SQLAlchemy triggers or ORM listeners.
-
----
-
-## 13. Migration Strategy
-
-- **Tooling**: Alembic async migrations configured in `backend/alembic/`.
-- **Revision Conventions**:
-  - Migration file names: `<timestamp>_<descriptive_action>.py` (e.g. `20260919_001_initial_schema.py`).
-  - Strict pair rule: Every migration file must contain matching, tested `upgrade()` and `downgrade()` functions.
-- **Zero-Downtime Principles**:
-  - Add new columns as `NULLABLE` or with safe defaults.
-  - Never drop columns directly in active production; use a multi-phase deprecate-and-remove cycle.
-  - Run database migrations before deploying new backend containers.
+Upon database initialization, the following defaults are deterministically seeded:
+1. **Default User Preferences**: Default 6.0h focus capacity, 0.75 focus efficiency, and standard notification flags.
+2. **Default User Interests**:
+   - `Gym & Fitness` (`#10B981`, target: 4h/week, protected: true)
+   - `Rest & Recovery` (`#6366F1`, target: 7h/week, protected: true)
+   - `Reading & Learning` (`#F59E0B`, target: 3h/week, protected: false)
+3. **Default Weekly Schedule Template**: Mon–Fri 09:00–12:00 and 14:00–17:00 work windows.
 
 ---
 
-## 14. Seed Data Strategy
+## 14. Future Schema Extensions
 
-Upon database initialization, the following seeds are deterministically populated via an idempotent seed script (`backend/app/db/seed.py`):
-
-1. **Categories Taxonomy**:
-   - `hackathon` ("Hackathons & Sprints")
-   - `internship` ("Internships & Apprenticeships")
-   - `scholarship` ("Scholarships & Grants")
-   - `competition` ("Competitions & Challenges")
-   - `coding_contest` ("Competitive Programming & Code Contests")
-   - `fellowship` ("Fellowships & Residencies")
-   - `workshop` ("Workshops & Masterclasses")
-   - `conference` ("Academic & Tech Conferences")
-   - `certification` ("Professional Certifications")
-   - `course` ("Cohort Courses & Bootcamps")
-   - `research_opportunity` ("Undergrad/Graduate Research Positions")
-   - `job` ("Entry-Level & Graduate Roles")
-   - `event` ("Networking & Career Events")
-2. **Sources Registry**:
-   - `manual_seed` ("Internal Curated Seed Catalog")
-   - `user_submission` ("User Contributed Opportunities")
-   - `devpost` ("Devpost Hackathon Feed")
-   - `unstop` ("Unstop Opportunities Feed")
-3. **Core Organizations**:
-   - Initial seed of well-known organizations (e.g. `Google`, `Microsoft`, `MIT`, `MLH`).
+- **Calendar Integration**: `external_sync_tokens` table for OAuth refresh tokens for Google Calendar and Apple Calendar.
+- **Collaborative Accountability**: `work_item_shares` table allowing users to share read-only progress on specific deadlines with an advisor or friend.
+- **Energy-Level Curves**: `hourly_energy_profiles` table mapping a user's peak focus windows across the day (0–100 scale).
 
 ---
 
-## 15. Future Schema Extensions
+## 15. Open Database Questions
 
-The schema accommodates future roadmap requirements without destructive table alterations:
-- **Calendar Subscription Feed**: Add `calendar_token UUID UNIQUE` to `users` to authenticate private `.ics` iCal feed URLs.
-- **Semantic Vector Search**: Add `embedding vector(384)` to `opportunity_ai_metadata` with zero changes to `opportunities`.
-- **Transactional Email Logs**: Add `delivery_channel VARCHAR(50) DEFAULT 'in_app'` and `email_message_id` to `notifications`.
-- **Collaborative Team Tracking**: Create `teams` and `team_members` tables, adding `team_id UUID NULLABLE FK` to `user_tracking`.
-
----
-
-## 16. Open Database Questions
-
-| # | Question | Impact | Current Options | Decision / Working Assumption |
+| # | Question | Impact | Options | Working Assumption |
 | :-: | :--- | :--- | :--- | :--- |
-| **ODQ-1** | Should `opportunities.status` be maintained by a periodic cron worker or computed dynamically via a generated virtual column? | Affects query performance vs. background worker overhead. | (A) Materialized column updated by cron<br>(B) Dynamic SQL calculation `CASE WHEN deadline < NOW() THEN 'expired' ...` | **Decision**: Hybrid approach. Materialized column indexed for fast catalog filtering, with a lightweight background task running hourly to sweep elapsed deadlines. |
-| **ODQ-2** | Should canonical URLs be strictly unique across the entire table, or unique per active opportunity? | Affects whether a recurring annual contest (e.g. HackMIT with the same URL every year) can be re-created in subsequent years. | (A) Globally unique `canonical_url`<br>(B) Unique on `(canonical_url, EXTRACT(YEAR FROM deadline))` | **Decision**: Composite uniqueness on `(canonical_url, EXTRACT(YEAR FROM deadline))` to allow annual recurring events sharing a static domain. |
-| **ODQ-3** | How should soft deletions be handled for user tracking? | Affects storage growth vs. recovery capability. | (A) Soft delete column `deleted_at`<br>(B) Hard delete cascade | **Decision**: Hard delete cascade for MVP. `status = 'archived'` covers users wanting to hide items without deleting history. |
+| **ODQ-1** | Should `work_items.completion_pct` be maintained by a trigger or computed dynamically in queries? | Affects query latency vs. write overhead. | (A) Trigger on `work_units` updates<br>(B) Application-level service update | **Assumption**: Application-level service updates `completion_pct` atomically whenever subtasks change. |
+| **ODQ-2** | How many historical time entries should inform a category's `user_pace_factors`? | Affects responsiveness to user improvement vs. noise. | (A) All-time cumulative average<br>(B) Rolling 30-day exponential moving average | **Assumption**: All-time weighted average initially, moving to an exponential moving average (EMA) post-MVP. |

@@ -7,24 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- Completed comprehensive, versioned REST API Contract Specification (`docs/api-contract.md`) defining endpoint paths, strict request/response Pydantic JSON schemas, Bearer JWT authentication, row-level authorization isolation, offset pagination, multi-attribute filtering, date-time standards, rate limiting, and defensive AI parsing contracts.
-- Completed authoritative Database Schema Specification (`docs/database-schema.md`) establishing PostgreSQL 15+ relational design, normalized organizations and ingestion sources, separate AI metadata extension table, unified user tracking lifecycle entity, UTC timezone invariance, full-text and trigram search strategies, and concrete indexing architectures.
-- Completed comprehensive System Architecture Design (`docs/architecture.md`) defining technical stack selections (FastAPI, PostgreSQL 15+, Vite/React/TS SPA), component boundaries, pluggable AI and ingestion pipelines, in-process async background worker, security models, data flows, and Architectural Decision Records (ADR-001 through ADR-007).
-- Updated development workflow roadmap (`docs/development-workflow.md`) marking API contract design complete and transitioning to AI subsystem and frontend specifications.
-- Formalized complete, implementation-ready 32-section Product Requirements Document (`docs/prd.md`) defining target personas, user journeys, MVP scope boundaries, opportunity data model, lifecycle states, in-app notifications, and testable acceptance criteria.
-- Updated project context (`docs/project-context.md`) with confirmed MVP decisions regarding notification channels, AI feature scoping, and lifecycle separation.
-- Initial project directory structure (`frontend/`, `backend/`, `ai-model/`, `docs/`, `.github/`)
-- Project context documentation (`docs/project-context.md`)
-- Product requirements document (`docs/prd.md`)
-- System architecture documentation (`docs/architecture.md`)
-- API contract specification (`docs/api-contract.md`)
-- Database schema design (`docs/database-schema.md`)
-- AI model specification (`docs/ai-model-spec.md`)
-- Frontend specification and design guidelines (`docs/frontend-spec.md`)
-- Development workflow for AI agents and human contributors (`docs/development-workflow.md`)
-- Repository coding conventions and guidelines (`docs/coding-conventions.md`)
-- Testing strategy across frontend, backend, AI, and integration (`docs/testing-strategy.md`)
-- Deployment architecture plan (`docs/deployment.md`)
-- Module boundary READMEs (`frontend/README.md`, `backend/README.md`, `ai-model/README.md`)
-- Gitignore and pull request template (`.gitignore`, `.github/pull_request_template.md`)
+### ⚠️ Major Product Pivot (2026-09-19)
+- **Architectural Transition**: Formally transitioned Deadline Radar from a legacy opportunity/hackathon/scholarship discovery aggregator into an **AI-powered personalized deadline monitoring, workload management, dynamic prioritization, empirical time tracking, and adaptive daily planning system**.
+- **Deprecation**: Deprecated all legacy concepts involving public opportunity catalogs, hackathon feeds, web scrapers, application trackers as primary products, organization registries, and opportunity taxonomy scrapers.
+- **Rewritten Core Context & PRD (`docs/project-context.md`, `docs/prd.md`)**:
+  - Established the closed-loop intelligence cycle: Add Work → AI Decompose → Estimate Effort → Learn Personal Pace → Compare with Available Time → Detect Risk → Prioritize → Daily Plan → Stopwatch Execution → Track Actual Time → Update Personal Model → Replan.
+  - Authored comprehensive 44-section PRD detailing Work Items, Temporal Deadlines, Work Decomposition, Effort Estimation, Personalization & Pace Factors, Available Time modeling, Workload Capacity calculations, Dynamic Priority scoring, Today view cockpit, Stopwatch tracking, and Protected Personal Interests.
+- **Redesigned System Architecture (`docs/architecture.md`)**:
+  - Established a decoupled Modular Monolith centered around Work Management, Time Availability, Time Tracking, Deterministic Risk & Priority Engines, Adaptive Daily Planning, Statistical Personalization Engine (Exponential Moving Average), and a Pluggable AI Facade.
+  - Codified updated Architectural Decision Records (ADR-001 through ADR-007) ensuring deterministic algorithms for math/risk calculations while scoping LLM usage to semantic work decomposition and unstructured parsing.
+- **Redesigned Database Schema (`docs/database-schema.md`)**:
+  - Redesigned normalized relational schema with 13 core entities: `users`, `user_preferences`, `user_interests`, `time_availability`, `schedule_blocks`, `work_items`, `work_units`, `work_estimates`, `time_entries`, `user_pace_factors`, `plans`, `plan_items`, and `notifications`.
+  - Enforced strict UTC `TIMESTAMPTZ` representations, row-level ownership isolation, and historical observation persistence for personalization telemetry.
+- **Redesigned REST API Contract (`docs/api-contract.md`)**:
+  - Replaced legacy catalog endpoints with operational REST routes: `/work`, `/availability`, `/tracking/sessions`, `/planning`, `/today`, `/dashboard`, `/timeline`, `/workload`, `/insights`, and `/ai/decompose`.
+  - Added strict Pydantic v2 schemas, Bearer JWT security models, RFC 7807 error envelopes, and explicit data classification badges (`USER INPUT`, `AI-DERIVED DATA`, `SYSTEM-CALCULATED DATA`, `USER-VERIFIED DATA`, `ACTUAL OBSERVED DATA`).
+- **Rewritten Frontend Specification (`docs/frontend-spec.md`)**:
+  - Outlined client information architecture: Today View (Now/Next/Plan/Stopwatch), Radar Dashboard, Work Items list & detail, Add Work with AI Decomposition drawer, Timeline Gantt projection, Calendar view, Workload Capacity meters, and Personal Insights.
+- **Rewritten AI Subsystem Specification (`docs/ai-model-spec.md`)**:
+  - Defined strict separation between generative LLM reasoning (decomposition, extraction, missing-info flags) and deterministic mathematical calculations (risk ratio $R = E_r / H_a$, dynamic priority score $S$, and statistical pace factor $P = A / E$).
+  - Specified provider abstraction supporting Gemini, Claude, OpenAI, and a deterministic offline test stub (`MockAIService`).
+- **Created Editorial Design Specification (`docs/design.md`, `design.md`)**:
+  - Created 41-section dark editorial design system inspired by high-contrast, typography-driven layouts (near-black `#0B0C0C` canvas, warm off-white `#F2F0EA` text, restrained amber accents, subtle borders, generous spacing, anti-AI-slop principles).
+- **Rewritten Documentation & Module Indexes**:
+  - Rewrote root `README.md` and module READMEs (`backend/README.md`, `frontend/README.md`, `ai-model/README.md`) to reflect the new product identity.
+  - Updated supporting documentation (`docs/development-workflow.md`, `docs/coding-conventions.md`, `docs/testing-strategy.md`, `docs/deployment.md`).
+
+### Historical Changes (Legacy Opportunity Discovery Concept - Obsolete)
+- Completed initial prototype specifications for public opportunity discovery catalog, hackathon feeds, Devpost scraping pipelines, and application status kanban boards. *(Superseded by product pivot).*

@@ -1,163 +1,193 @@
 # Project Context — Deadline Radar
 
-## Project Identity
+## 1. Project Identity
 - **Project Name**: Deadline Radar
-- **Nature of Project**: Personal software product (NOT a hackathon project; designed as a durable, production-grade product).
 - **Repository**: `deadline_radar`
 - **Location**: `/Users/kunalsuryanshi/Documents/Projectsnew/deadline_radar`
-- **Primary Domain**: Opportunity discovery, deadline tracking, time-management, and decision assistance for students and young professionals.
+- **Product Nature**: Personal software product (production-grade personal software, NOT a hackathon project, NOT an enterprise team PM tool).
+- **Core Domain**: AI-powered personalized deadline monitoring, cognitive workload management, dynamic prioritization, and adaptive time planning.
+- **Product Vision**: A personalized intelligent command center that continuously answers: *"What deserves my time right now?"* rather than merely listing *"What tasks do I have?"*
 
 ---
 
-## Problem Statement
-Students and young professionals are inundated with high-stakes, time-sensitive opportunities and academic/career responsibilities distributed across disparate channels:
-- Hackathons, coding competitions, project showcases
-- Internship and fellowship application portals
-- Scholarships, financial aid, and grants
-- College competitions, exams, course submissions
-- Certifications, conferences, and career events
-
-The critical failure point is not merely discovering opportunities—it is **remembering, organizing, prioritizing, and acting on them before their deadlines expire**. Valuable opportunities are continually lost due to:
-- Information overload and fragmentation across emails, Discord/Slack groups, social media, and university portals.
-- Lack of centralized visibility into closing dates and upcoming urgency.
-- Absence of personalized status tracking (e.g., whether an application is bookmarked, started, submitted, or awaiting a decision).
-- Forgotten deadlines due to irregular or nonexistent reminder mechanisms.
+## 2. Product Definition & Mission
+**Deadline Radar** is an AI-powered personalized deadline monitoring and time-management system. It transforms how students, knowledge workers, researchers, and creators manage competing obligations by maintaining active situational awareness of:
+- **WORK**: What needs to be accomplished and how complex it is.
+- **TIME**: When obligations are due and how much usable time actually exists.
+- **CAPACITY**: Available working windows minus classes, jobs, gym, rest, and personal interests.
+- **EFFORT**: Estimated duration calibrated to **this specific user's historical working pace**.
+- **RISK**: The real-time relationship between remaining work and remaining suitable time.
+- **DYNAMIC PRIORITY**: Objective, transparent ranking of which work requires attention today.
+- **CONTINUOUS LEARNING**: Comparing predicted effort versus observed actual time to refine future personal estimates.
 
 ---
 
-## Proposed Solution
-**Deadline Radar** is a centralized opportunity and deadline management platform. It aggregates opportunities into a unified, distraction-free radar, empowers users to track application lifecycles, surfaces urgent deadlines via dashboard and calendar views, sends timely notifications, and leverages modular AI capabilities to parse messy opportunity announcements, classify them, detect duplicates, and prioritize what matters most to each user.
+## 3. Explicit Deprecation of Legacy Opportunity-Discovery Concept
+> [!IMPORTANT]
+> **ARCHITECTURAL PIVOT NOTICE**: The previous concept of Deadline Radar as an "opportunity discovery platform", "hackathon aggregator", "scholarship search engine", or "internship directory" is **OBSOLETE AND DEPRECATED**.
+> 
+> Deadline Radar is **NOT** an opportunity discovery feed, web scraper, or job board. External commitments (such as preparing an internship application, studying for an exam, writing a research paper, or submitting a project) are simply treated as **Work Items** within the user's personal workload.
 
 ---
 
-## Target Users
-- **Primary Audience (Initial Focus)**: College and university students actively seeking career advancement, competitions, and academic milestones.
-- **Secondary Audience**: Recent graduates and young professionals looking for internships, entry-level jobs, certifications, and fellowships.
-- **Key Characteristics**: High context-switching, active on multiple communication channels, deadline-sensitive, need low friction and high clarity.
+## 4. Problem Statement
+People are chronically overwhelmed by multiple concurrent commitments with differing deadlines, effort requirements, priorities, and schedules. 
+
+Traditional task managers and calendars fail catastrophically because they treat time and work as static:
+- **The "Friday Deadline" Fallacy**: A standard task manager records: *"ML Report due Friday at 11:59 PM."* It is blind to the fact that the report requires 8 hours of deep focus, the user takes 25% longer than average on writing, and the user has only 4 suitable hours of free time before Friday due to labs, gym, and exam study.
+- **Estimation Blindness (The Planning Fallacy)**: Humans consistently underestimate how long complex tasks take. Traditional tools never record actual time spent versus predicted time, so users repeat the same estimation errors indefinitely.
+- **Lack of Time-Capacity Awareness**: A calendar shows events, and a to-do list shows items, but neither connects **workload demand** against **usable supply of time**.
+- **Static Priority Stagnation**: Tasks marked "Medium Priority" stay medium until the night before the deadline, triggering panic, rushed quality, and burnout.
+- **Monolithic Intimidation**: Complex tasks (e.g. *"Prepare for Distributed Systems Final"*) feel paralyzing because they are not broken into manageable cognitive units with concrete effort estimates.
 
 ---
 
-## Core User Journey
-1. **Discover & Ingest**: The user navigates available opportunities on the platform OR pastes an unstructured link/text to quickly capture an opportunity.
-2. **Review & Save**: The user inspects opportunity details (deadline, eligibility, location, application URL) and saves it to their personal radar.
-3. **Organize & Prioritize**: The user categorizes the item, tags it, notes required action items, and monitors it on their central dashboard.
-4. **Calendar & Proximity Alerting**: The user reviews deadlines on a timeline/calendar and receives scheduled notifications (e.g., 7 days, 3 days, 1 day before, and day-of).
-5. **Execute & Update**: The user submits their application and updates the tracking status (`Applied`, `Interviewing`, `Completed`, or `Archived`).
+## 5. The Central Product Loop
+The heartbeat of Deadline Radar is an adaptive feedback loop that connects planning with reality:
+
+```text
+USER ADDS WORK
+      ↓
+AI UNDERSTANDS THE WORK (Extracts constraints, deliverables, type)
+      ↓
+AI DECOMPOSES COMPLEX WORK (Breaks into concrete Work Units)
+      ↓
+ESTIMATE REQUIRED EFFORT (Initial baseline prediction)
+      ↓
+LEARN USER'S PERSONAL PACE (Calibrates against historical pace factor)
+      ↓
+COMPARE WORKLOAD WITH AVAILABLE TIME (Calculates capacity & buffer)
+      ↓
+DETECT DEADLINE RISK (Safe, Watch, At Risk, Critical, Overdue)
+      ↓
+CALCULATE DYNAMIC PRIORITY (Objective, transparent score & reasoning)
+      ↓
+GENERATE / ADJUST PLAN (Proposes time allocation for Today)
+      ↓
+USER EXECUTES WORK (Deep work sessions with built-in time tracking)
+      ↓
+TRACK ACTUAL TIME / PROGRESS (Logs observed duration & completion)
+      ↓
+COMPARE PREDICTED VS ACTUAL (Calculates estimation variance)
+      ↓
+UPDATE PERSONAL MODEL (Refines personal pace profile per task domain)
+      ↓
+REPLAN WHEN NECESSARY (Adapts schedule dynamically as reality shifts)
+```
 
 ---
 
-## Core Features
-### 1. Opportunity Catalog & Discovery
-- Filterable registry of opportunities across Hackathons, Internships, Scholarships, Competitions, Coding Contests, Events, Fellowships, and Certifications.
-- Multi-attribute search (category, dates, mode: online/offline, cost, eligibility criteria).
+## 6. Core Product Concepts
 
-### 2. Comprehensive Opportunity Details
-- Structured fields: Title, description, organizing body, category, deadline timestamp, start/end dates, eligibility criteria, location, online/in-person status, registration fee/cost, official URL, source attribution, tags, and current state.
+### A. Work Items & Work Units
+- **Work Item**: Any objective or deliverable requiring user time and energy (e.g. assignment, exam prep, software project, research report, grant submission, personal project).
+- **Work Unit (Subtask)**: An atomic, measurable piece of work decomposed from a Work Item (e.g. *"Data preprocessing"*, *"Draft methodology section"*, *"Review unit tests"*).
 
-### 3. Personal Radar & Lifecycle Tracking
-- Save/Bookmark opportunities with custom statuses (`Saved`, `Interested`, `Applied`, `Interviewing`, `Offered`, `Rejected`, `Completed`, `Archived`).
-- Personal notes and custom reminders per opportunity.
+### B. Deadline & Temporal Constraints
+- A deadline is not evaluated in isolation. It is evaluated in the context of:
+  $$\text{Deadline Risk} = \frac{\text{Remaining Estimated Effort}}{\text{Remaining Usable Available Time}}$$
+- Considers hard deadlines, soft targets, milestones, buffer time, and time-of-day cutoffs.
 
-### 4. Deadline Dashboard
-- Clear, prioritized views: Urgent (next 24h, next 3 days, next 7 days), Active Tracking, Overdue, and Recently Added.
+### C. Personal Effort Estimation & Pace Learning
+- The system recognizes that effort is deeply personal. If an initial baseline predicts 3 hours for writing a paper, but the user historically takes 4 hours on writing tasks (Pace Factor = 1.33), future writing estimates automatically adjust.
+- AI estimates provide a starting baseline; the user can always inspect, override, and calibrate.
 
-### 5. Calendar & Timeline Views
-- Visual representation of upcoming deadlines on monthly/weekly calendar layouts.
+### D. Available Time & Usable Capacity
+- Users have finite usable deep-work hours. 
+- A 4-hour evening block containing a 1-hour gym workout and dinner does not offer 4 hours of focus—it offers 2.5 hours of usable deep-work capacity.
+- The system explicitly differentiates between total clock time, available slots, and suitable cognitive focus windows.
 
-### 6. Notification System
-- Configurable reminder milestones (7d, 3d, 1d, day-of) via email or in-app alerts (`TODO — NEEDS DECISION`).
+### E. Dynamic Priority & Deadline Risk
+- Priority is dynamic: an important task far in the future starts with low urgency. As available hours decrease and competing tasks consume capacity, its priority automatically rises.
+- Risk states:
+  - **SAFE**: Ample available time relative to required effort ($> 2.0\times$ buffer).
+  - **WATCH**: Workload is manageable but requires steady progress ($1.3\times - 2.0\times$ buffer).
+  - **AT RISK**: Usable time is nearly equal to remaining effort ($1.0\times - 1.3\times$ buffer). Slippage will cause a missed deadline.
+  - **CRITICAL**: Required effort exceeds remaining available time ($< 1.0\times$ buffer). Deficit detected; intervention required.
+  - **OVERDUE**: Deadline has passed without completion.
 
-### 7. Modular AI Assistance
-- Extraction of structured fields from unstructured text or URLs.
-- Domain classification, concise opportunity summaries, and eligibility extraction.
-- Cross-source deduplication and semantic search.
+### F. Adaptive Daily Planning ("Today" View)
+- Answers: *"What should I work on today, and when?"*
+- Generates a proposed allocation of the user's available time blocks across top-priority Work Units.
+- Plans are recommendations—never rigid mandates. The user can adjust, swap, or re-generate at any time.
+
+### G. Protected Time for Personal Interests & Rest
+- A healthy schedule must protect non-work activities: fitness, gaming, family, hobbies, rest, and recovery.
+- The planner respects user-designated protected interest blocks and will not schedule deep work over them unless explicitly authorized.
 
 ---
 
-## Technology Stack
-- **Backend**: Python 3.11+, FastAPI (asynchronous REST API, OpenAPI docs).
-- **Database**: PostgreSQL 15+, SQLAlchemy ORM 2.0 (asyncio), Alembic (migrations).
-- **Frontend**: Vite + React 18+ + TypeScript + TanStack Query + Vanilla CSS / CSS Modules (ADR-003).
-- **AI/ML**: Modular Python service facade invoking hosted LLM structured output APIs (Gemini 1.5 Flash / OpenAI GPT-4o-mini).
-- **Background Worker**: In-process lightweight `asyncio` task loop running inside FastAPI container.
-- **Search**: PostgreSQL native full-text search (`tsvector`) and trigram matching (`pg_trgm`).
+## 7. Product Principles
+1. **Explainable Intelligence**: No mysterious "black box" scores. When an item is marked `AT RISK` or given high priority, the system explicitly explains why (e.g. *"6.5h of work remain with only 4.0h of free time before Thursday 5 PM"*).
+2. **Deterministic Calculations vs. Probabilistic Reasoning**: Mathematical calculations (risk ratios, time subtractions, countdowns) are computed using strict deterministic code. LLMs are used exclusively for semantic comprehension, task decomposition, and initial effort suggestions.
+3. **Respect User Agency**: AI proposes; the user disposes. Decompositions, estimates, and daily plans are always editable.
+4. **Data Minimization & Confidentiality**: Work descriptions, personal schedules, and time logs are private to the user. No public social feeds, leaderboards, or vanity metrics.
+5. **Low Cognitive Load**: Interface designed for calm focus. Editorial typography, generous spacing, high contrast, and zero clutter.
+
+---
+
+## 8. Non-Goals
+- **NOT an Opportunity Aggregator / Discovery Board**: Deadline Radar does not scrape or aggregate external hackathons, scholarships, or job portals.
+- **NOT a Collaborative Team Jira / Enterprise ATS**: Designed exclusively as a personal command center for individuals, not for team sprints, agile burndowns, or manager oversight.
+- **NOT a Google Calendar / Outlook Replacement**: Integrates with personal schedules and calendars, but does not seek to replace email or external meeting scheduling.
+- **NOT an Automated Task Finisher**: The system does not write code, submit forms, or do the work for the user. It organizes and protects the time needed for the user to execute.
+
+---
+
+## 9. Technology Stack
+- **Backend**: Python 3.11+, FastAPI (asynchronous REST API, Pydantic v2 schemas).
+- **Database**: PostgreSQL 15+, SQLAlchemy 2.0 (AsyncIO), Alembic (deterministic schema migrations).
+- **Frontend**: Vite + React 18+ + TypeScript, TanStack Query, Vanilla CSS / CSS Modules with editorial design system tokens.
+- **AI/ML Subsystem**: Decoupled Python service facade interfacing with structured LLM APIs (Gemini 1.5 Flash / Claude / OpenAI) for natural-language parsing and decomposition; deterministic Python math engines for risk, capacity, and pace factor calibration.
 - **Containerization**: Docker & Docker Compose.
 
 ---
 
-## AI/ML Components
-- **Information Extraction**: Parsing messy text/HTML into validated Pydantic models (Title, Org, Deadline, Eligibility, URL, etc.).
-- **Categorization**: Multi-class categorization into 13 standardized opportunity domains.
-- **Summarization**: Generating concise 2-sentence executive summaries and bulleted requirement checklists.
-- **Deduplication**: Exact canonical URL matching and Jaro-Winkler title distance.
-- **Semantic Search & Personalization**: Deferred to post-MVP (`pgvector`).
+## 10. Data Integrity Classification
+Across all layers, data is strictly classified:
+- `USER INPUT`: Explicit user-entered text, manual estimates, deadline dates, and schedule preferences.
+- `AI-DERIVED DATA`: LLM-generated subtask suggestions, initial effort guesses, and milestone breakdowns (always flagged for review).
+- `SYSTEM-CALCULATED DATA`: Deterministic calculations (risk ratios, available hours, dynamic priority scores, countdowns).
+- `USER-VERIFIED DATA`: AI suggestions explicitly accepted, edited, or confirmed by the user.
+- `ACTUAL OBSERVED DATA`: Empirical timer logs, session durations, and completion timestamps used to calculate personal pace factors.
 
 ---
 
-## Data Sources
-- **Current State**: Seed catalog + user submissions.
-- **Future Ingestion Pipeline**: Pluggable source adapters for public APIs, verified RSS feeds, and platform scrapers (Devpost, Unstop).
-- **Architectural Requirement**: Sources must plug into a common, normalized ingestion pipeline without tight coupling to core domain models.
+## 11. Important Terminology
+| Term | Definition |
+| :--- | :--- |
+| **Work Item** | A top-level task, project, assignment, or goal requiring effort. |
+| **Work Unit** | A decomposed sub-task or actionable milestone within a Work Item. |
+| **Deadline** | A temporal constraint with UTC timestamp, timezone, and buffer requirements. |
+| **Available Time** | The actual usable free hours in a user's schedule, accounting for recurring commitments. |
+| **Workload** | Total remaining estimated effort across active work items over a specified time horizon. |
+| **Work Session** | A tracked block of focused execution against a specific Work Unit. |
+| **Time Entry** | An empirical log of actual time spent (start time, end time, duration). |
+| **Pace Factor** | Ratio of actual time spent to initial estimated time ($\text{Actual} / \text{Estimated}$) for a task domain. |
+| **Deadline Risk** | Mathematical deficit/surplus indicator comparing remaining work to available time. |
+| **Dynamic Priority** | Algorithmic ranking driven by urgency, risk, importance, and dependencies. |
+| **Today's Plan** | A proposed daily time block schedule allocating available hours to priority work. |
+| **Protected Interest**| Designated calendar slots reserved for personal well-being, fitness, or leisure. |
 
 ---
 
-## External Services
-- **AI Provider**: Hosted LLM API (Google Gemini 1.5 Flash or OpenAI GPT-4o-mini).
-- **Transactional Notifications**: Deferred to post-MVP (Resend / AWS SES); in-app notifications used for MVP.
+## 12. Current Scope (MVP) vs. Future Scope
 
----
+### MVP Scope
+- User authentication and personal profile setup.
+- Work Item creation with title, description, deadline, importance, and category.
+- Natural-language work understanding & AI decomposition into editable Work Units.
+- Time availability configuration (weekly recurring commitments and deep-work capacity windows).
+- Deterministic deadline risk calculation (`SAFE`, `WATCH`, `AT RISK`, `CRITICAL`, `OVERDUE`).
+- Dynamic priority scoring with transparent explanations.
+- "Today" adaptive daily planner (allocating available hours across priority work units).
+- Built-in time tracking (active session timer and manual time logging).
+- Prediction vs. actual variance tracking and personal pace factor calibration.
+- In-app notification center for approaching deadlines and capacity risk warnings.
 
-## Constraints
-- **Maintainability**: Clear, self-documenting code; clean separation of concerns.
-- **Modularity**: AI engine, ingestion pipeline, API, and UI must evolve independently.
-- **Cost Awareness**: Low-cost / free-tier compatible during initial development; no premature expensive infrastructure.
-- **Security**: Strict credential hygiene; zero secrets in code; typed validation on all external inputs.
-- **AI-Agent Friendly**: Structured documentation as the single source of truth; no unguided architectural drift.
-
----
-
-## Team Structure
-- **Current Team**: Solo personal project by Kunal Suryanshi.
-- **Development Process**: Accelerated via AI coding agents adhering strictly to project documentation.
-- **Future Ready**: Codebase structured with clear boundaries to support open-source or team collaboration seamlessly.
-
----
-
-## Current Development Status
-- **Phase**: API Contract Design Complete. Ready for Frontend & AI Model Specifications.
-- **Application Code**: None yet. Contracts and blueprints established first.
-
----
-
-## Important Decisions
-1. **Product, Not Hackathon**: Designed for long-term production quality, not hackathon shortcuts.
-2. **Backend Direction**: FastAPI + SQLAlchemy + PostgreSQL chosen based on developer proficiency and async performance (ADR-001, ADR-002).
-3. **Frontend Stack**: Vite + React 18+ + TypeScript SPA with TanStack Query and Vanilla CSS/CSS Modules for speed, type safety, and rich UI aesthetics (ADR-003).
-4. **Decoupled AI Layer**: AI capabilities isolated as an in-process service facade calling hosted LLMs with strict JSON schemas, allowing model swapping without altering business logic (ADR-004).
-5. **Lightweight In-Process Background Worker**: Scheduled tasks (notification evaluation, periodic sync) run via Python `asyncio` task loop inside the API container, deferring Celery/Redis complexity (ADR-005).
-6. **Native PostgreSQL Search**: Full-text `tsvector` and trigram `pg_trgm` used for MVP search; dedicated vector DB deferred to post-MVP via `pgvector` (ADR-006).
-7. **In-App Notification Center for MVP**: Proves reminder generation logic without third-party email deliverability dependencies (ADR-007).
-8. **Distinct Opportunity vs. Application Lifecycles**: Strict separation between system-wide opportunity status (`OPEN`, `CLOSING_SOON`, `EXPIRED`) and private user tracking lifecycle (`SAVED`, `INTERESTED`, `APPLYING`, `APPLIED`, `SELECTED`, `REJECTED`, `COMPLETED`, `ARCHIVED`).
-9. **Unified User Tracking Entity & API**: Single `/radar` resource manages the entire user lifecycle with private notes and timestamps, avoiding fragmented endpoints.
-10. **Separation of Authoritative vs. AI Data**: Core opportunity facts reside in `opportunities`, while AI summaries, bullets, and confidence scores reside in `opportunity_ai_metadata`.
-11. **Normalized Organizations & Sources**: Independent `organizations` and `sources` tables prevent string duplication and enable platform-wide deduplication.
-12. **Idempotent Radar Tracking & Read Actions**: Saving already-tracked items returns the existing record idempotently; read receipts on notifications are idempotent.
-13. **Documentation-Driven Development**: All endpoints, schemas, and architecture are documented before implementation.
-
----
-
-## Open Questions
-1. **Authentication Session Storage**: JWT Bearer token in Authorization header vs. HttpOnly secure cookie for production (Working assumption: Bearer header for early API development, migrating to HttpOnly cookies before public launch).
-2. **Production Hosting Platform**: Selection between Render, Railway, or Fly.io for containerized deployment.
-3. **Managed PostgreSQL Provider**: Selection between Neon, Supabase, or Railway Managed Postgres.
-
----
-
-## Things AI Agents Must NOT Assume
-- **Do not assume a technology unless documented**: Do not add random libraries, frameworks, or cloud services.
-- **Do not add dependencies without justification**: Every dependency in `pyproject.toml` / `package.json` must serve an explicit requirement.
-- **Do not invent product features**: Adhere strictly to the features in `docs/prd.md`.
-- **Do not replace architectural decisions without discussion**: Keep the FastAPI + PostgreSQL + modular AI architecture intact.
-- **Do not modify unrelated components**: When fixing or implementing a feature, change only the necessary files.
-- **Do not bypass documentation**: Keep `api-contract.md` and `database-schema.md` in sync with any code changes.
-- **Do not generate fake/mock implementations and call them done**: Write real, tested code once implementation commences.
+### Post-MVP Scope
+- Calendar two-way synchronization (Google Calendar, Apple Calendar via `.ics` and OAuth).
+- Multi-channel notifications (email digests, mobile push, Telegram/Discord webhooks).
+- Advanced statistical pace models (Bayesian estimation adjustment across micro-skills).
+- Energy-level curve optimization (matching high-focus tasks to user's peak morning/evening hours).
+- Offline mobile companion app.

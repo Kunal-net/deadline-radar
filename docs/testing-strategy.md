@@ -1,129 +1,138 @@
 # Testing Strategy — Deadline Radar
 
-## Overview
-Quality and reliability in **Deadline Radar** are guaranteed through a multi-tier testing strategy. Because this platform is responsible for critical user deadlines, accuracy in time computation, data persistence, and API contracts is paramount.
+## 1. Overview
+
+Quality and reliability in **Deadline Radar** are guaranteed through a multi-tier testing strategy. Because this platform is responsible for critical user deadlines, accuracy in time computation, deterministic risk scoring, personal pace learning, and API contracts is paramount.
 
 ```mermaid
 flowchart TD
     subgraph TestPyramid ["Testing Pyramid"]
-        E2E["E2E Tests (Playwright / Integration Flow)"]
-        Integration["Integration Tests (API + DB + AI Stub)"]
-        Unit["Unit Tests (Pure Functions, Pydantic Schemas, UI Components)"]
+        E2E["E2E Tests (Playwright / Core Operating Loop)"]
+        Integration["Integration Tests (API + DB + Deterministic Math + AI Stub)"]
+        Unit["Unit Tests (Risk Math, EMA Stats, Pydantic Schemas, UI Components)"]
     end
     Unit --> Integration --> E2E
 ```
 
 ---
 
-## 1. Backend Testing
+## 2. Backend Testing
 
-### 1.1 Unit Tests
+### 2.1 Unit Tests (Pure Calculations & Domain Logic)
 - **Tools**: `pytest`, `pytest-asyncio`.
 - **Scope**:
-  - Pydantic schema validation (verifying valid and invalid ISO 8601 timestamps, email formats, URL constraints).
-  - Business logic calculations: Urgency bucket assignment (<24h, <3d, <7d, overdue) across various timezones and edge dates.
-  - Authentication utilities: Password hashing, token encoding and decoding, expiration checks.
+  - **Deterministic Risk Ratio**: Verifying $R = \text{RemainingEffort} / \text{AvailableHours}$ across edge cases (0 available hours $\to$ Critical/Infinity, 0 remaining effort $\to$ Safe, boundary conditions at 0.5, 0.85, 1.15).
+  - **Dynamic Priority Scoring**: Verifying multi-factor weighting formula ($S \in [0, 100]$), exponential proximity decay, and urgency bump when competing tasks overlap.
+  - **Pace Factor Learning (EMA)**: Verifying Exponential Moving Average update formula ($P_{t} = 0.2 \cdot \text{Ratio} + 0.8 \cdot P_{t-1}$) and clamping boundaries ($[0.5, 3.0]$).
+  - **Availability & Capacity Subtraction**: Verifying recurring weekly available slots correctly subtract overlapping one-off schedule blocks and protected interest windows.
+  - **Authentication & Security**: Password hashing with Argon2id, JWT token signing/verification, expiration enforcement.
 
-### 1.2 API Route Tests
+### 2.2 API Route Tests
 - **Tools**: `httpx.AsyncClient` + `pytest`.
 - **Scope**:
   - Request/response contracts for every endpoint defined in `docs/api-contract.md`.
-  - HTTP status codes, error payload validation, and pagination parameters.
-  - Role-based authorization and unauthenticated request rejection (401 Unauthorized).
+  - HTTP status codes, error envelope structures, and pagination validation.
+  - Row-level isolation: ensuring User A cannot access or mutate User B's work items, time entries, or schedule blocks (`HTTP 404 Not Found` or `403 Forbidden`).
+  - Active session conflict: starting a second stopwatch while one is active returns `HTTP 409 Conflict`.
 
-### 1.3 Database & ORM Tests
-- **Tools**: `pytest` running against a test PostgreSQL instance (or SQLite in-memory test runner if isolated).
+### 2.3 Database & ORM Tests
+- **Tools**: `pytest` running against a test PostgreSQL instance.
 - **Scope**:
-  - ForeignKey constraints and cascade deletions (e.g., deleting a user deletes their tracking records).
-  - Unique constraint violations (e.g., duplicate user tracking on the same opportunity).
-  - Alembic migrations: Verifying `alembic upgrade head` and `alembic downgrade -1` run without errors.
+  - ForeignKey constraints and cascade behavior (deleting a work item cascades to units and estimates, while preserving time entries for telemetry).
+  - Unique constraint enforcement (only one active session per user, unique schedule block times).
+  - Alembic migrations: verifying `alembic upgrade head` and `alembic downgrade -1` run deterministically without data corruption.
 
 ---
 
-## 2. Frontend Testing
+## 3. Frontend Testing
 
-### 2.1 Component Tests
+### 3.1 Component Tests
 - **Tools**: Vitest + React Testing Library.
 - **Scope**:
-  - `UrgencyBadge`: Correct color and label rendering based on remaining milliseconds.
-  - `OpportunityCard`: Correct display of title, organization, tags, and action buttons.
-  - `AIExtractorBox`: Form submission, loading state, error display on failure.
+  - `RiskBadge`: Correct label and styling for `SAFE`, `WATCH`, `AT RISK`, `CRITICAL`, `OVERDUE`.
+  - `ActiveSessionWidget`: Running timer ticking accuracy, start/stop action triggers.
+  - `WorkItemCard`: Rendering title, category, deadline countdown, remaining effort, and progress indicator.
+  - `WorkDecompositionEditor`: Adding, deleting, reordering, and editing subtask duration inputs.
+  - `CapacityBar`: Visual bar allocation percentage, overbooked alert rendering.
 
-### 2.2 User Flows & State Management
+### 3.2 State Management & User Flows
 - **Scope**:
-  - Filter state: Selecting a category properly updates the filtered list.
-  - Optimistic updates: Toggling tracking status updates UI immediately without waiting for server response.
-  - Error state handling: Simulating network failure displays retry toast or inline alert.
+  - Optimistic updates: Toggling subtask completion updates UI immediately; rolls back on API error.
+  - Stopwatch store: Synchronizing local stopwatch tick with server `started_at` timestamp.
+  - Error state handling: Simulating network disconnection shows non-intrusive offline notification banner.
 
-### 2.3 End-to-End (E2E) Tests
+### 3.3 End-to-End (E2E) Tests
 - **Tools**: Playwright.
-- **Critical Paths**:
-  1. User registers -> logs in -> navigates to Discover -> saves an opportunity to Radar -> verifies opportunity appears on Dashboard with correct countdown.
-  2. User opens Add Opportunity modal -> pastes announcement text -> verifies AI parsed draft -> saves opportunity.
+- **Critical Path 1 — The Core Operating Loop**:
+  1. User registers and completes onboarding (sets weekly available hours and protected gym interest).
+  2. User navigates to `/work/new`, inputs project title and deadline, and triggers "Decompose with AI".
+  3. User reviews decomposed units, edits one estimate, and saves work item.
+  4. System redirects to `/today` displaying the new top NOW recommendation.
+  5. User starts stopwatch session, lets it run, and clicks "Stop Session".
+  6. Verify logged time entry is persisted and work item remaining effort and risk ratio update automatically.
 
 ---
 
-## 3. AI Subsystem Testing & Evaluation
+## 4. AI Subsystem Testing & Evaluation
 
-### 3.1 Dataset Validation
-- Automated schema validation over the evaluation benchmark dataset (`ai-model/tests/eval_dataset.jsonl`).
-- Verifies that all benchmark ground-truth records have valid UTC ISO strings and non-empty categories.
-
-### 3.2 Preprocessing & Sanitization Tests
-- Stripping raw HTML tags, normalizing whitespace, removing tracking URL query strings (`?utm_source=...`).
-- Preserving critical date tokens within text chunks.
-
-### 3.3 Model Evaluation Suite
-- Runs automatically when prompt templates or extraction logic are modified.
+### 4.1 Decomposition Benchmark Evaluation
+- Automated schema validation over benchmark prompt test cases (`ai-model/tests/eval_decomposition.jsonl`).
 - **Metrics Tracked**:
-  - Exact Date Accuracy: % of extractions where deadline matches ground truth down to the minute.
-  - Category Accuracy: Macro-F1 across the 8 standard opportunity categories.
-  - Pydantic Validation Pass Rate: Must be 100%.
+  - **Pydantic Validation Pass Rate**: Must be 100% (valid structured JSON conforming to `DecompositionResult`).
+  - **Subtask Count Distribution**: Must produce between 3 and 8 subtasks per complex work item.
+  - **Duration Plausibility**: All individual subtasks must be bounded between 0.5h and 3.0h.
+  - **Latency**: Provider responses must return within 4.0 seconds on standard broadband.
 
-### 3.4 Edge Case Testing
-- Announcements with no deadline: Verifies model returns `deadline: null` rather than hallucinating a future date.
-- Ambiguous date formats (e.g., "04/05/2026" — US vs. UK): Verifies extraction behavior and uncertainty flags.
-- Extreme length inputs (> 10,000 characters): Verifies clean truncation without server timeouts or crashes.
+### 4.2 Edge Case Testing
+- Inputs with no explicit deadline: Verifies model returns `detected_deadline_utc: null` rather than hallucinating dates.
+- Minimal or vague inputs (e.g., "Report"): Verifies model generates conservative generic units and flags missing information.
+- Extreme length descriptions (> 5,000 characters): Verifies clean truncation and processing without timeouts.
+
+### 4.3 Resilience & Fallback Testing
+- Mock AI provider timeout: Call `/api/v1/ai/decompose` with mocked timeout $\to$ Assert `HTTP 200 OK` with `fallback_used: true`, confidence `0.0`, and empty units $\to$ Verify frontend displays manual entry fallback cleanly without losing input text.
 
 ---
 
-## 4. End-to-End Integration Flow
+## 5. End-to-End Integration Flow
 
 ```text
 Frontend Client
       │
-      ▼ (HTTP POST /api/v1/ai/extract)
+      ▼ (HTTP POST /api/v1/ai/decompose)
 FastAPI Backend
       │
-      ▼ (Internal Service Call / AI Provider)
-AI Extraction Engine
+      ▼ (Internal Facade Call)
+AI Intelligence Layer (Gemini / Claude / Mock)
       │
-      ▼ (Validated Pydantic Payload)
+      ▼ (Validated Pydantic Decomposition)
 FastAPI Backend
       │
-      ▼ (SQLAlchemy Async Commit)
+      ▼ (User Review & Save: POST /api/v1/work)
 PostgreSQL Database
+      │
+      ▼ (Triggers Recalculation)
+Deterministic Risk & Priority Engines
+      │
+      ▼ (Updated Telemetry & Dashboard Summary)
+Frontend Client Radar
 ```
-
-### Integration Test Scenarios:
-1. **Full Opportunity Lifecycle**:
-   - Ingest opportunity -> Persist to DB -> Query via `/dashboard/overview` -> Check notification schedule generated -> Transition status to `Applied` -> Verify status update in DB.
-2. **AI Failure Resilience**:
-   - Mock AI provider timeout -> Call `/api/v1/ai/extract` -> Assert 200 OK with `extracted: null` and `warnings: ["Extraction timed out"]` -> Verify frontend falls back to manual entry gracefully.
 
 ---
 
-## 5. Continuous Testing Commands
+## 6. Continuous Testing Commands
 
 ```bash
-# Run Backend Unit & API Tests
+# Run Backend Unit, Risk Engine, & API Tests
 cd backend && pytest -v --cov=app tests/
 
-# Run Frontend Component & Unit Tests
+# Run Frontend Component & State Tests
 cd frontend && npm run test
 
-# Run AI Evaluation Suite
-cd ai-model && python -m pytest tests/test_extraction_eval.py
+# Run AI Decomposition Evaluation Suite (Using Mock or Test Provider)
+cd ai-model && python -m pytest tests/test_decomposition_eval.py
+
+# Run Playwright End-to-End Tests
+cd frontend && npx playwright test
 
 # Run Linters and Type Checkers
 cd backend && ruff check . && mypy app
