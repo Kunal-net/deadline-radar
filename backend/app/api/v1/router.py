@@ -6,6 +6,7 @@ from app.api.v1.endpoints import (
     auth,
     availability,
     health,
+    insights,
     notifications,
     planning,
     today,
@@ -25,3 +26,4 @@ api_router.include_router(planning.router, tags=["Planning"])
 api_router.include_router(today.router, tags=["Today Execution"])
 api_router.include_router(notifications.router, tags=["Notifications"])
 api_router.include_router(ai.router, prefix="/ai", tags=["AI Intelligence"])
+api_router.include_router(insights.router, prefix="/insights", tags=["Personal Insights & Pace Telemetry"])

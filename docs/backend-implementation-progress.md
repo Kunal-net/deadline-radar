@@ -2,9 +2,9 @@
 
 ## Overall Status
 
-- **Current Phase**: Phase 15 Completed — Transitioning to Phase 16
-- **Completed Phases**: Phase 01 to Phase 15
-- **Remaining Phases**: Phase 16 to Phase 20
+- **Current Phase**: Phase 16 Completed — Transitioning to Phase 17
+- **Completed Phases**: Phase 01 to Phase 16
+- **Remaining Phases**: Phase 17 to Phase 20
 - **Overall Status**: In Progress (Autonomous Execution Active)
 
 ---
@@ -411,12 +411,26 @@
 ---
 
 ## Phase 16 — Personalization / Learning
-- **Status**: Pending
-- **Date**: —
-- **Summary**: —
-- **Files**: —
-- **Tests**: —
-- **Notes**: —
+- **Status**: Completed
+- **Date**: 2026-09-20
+- **Summary**:
+  - Implemented closed-loop Personalization & Learning engine in `backend/app/services/ai/personalization_service.py`.
+  - Tracks prediction variance: absolute error, signed error, percentage accuracy, and directional rolling bias (`underestimating`, `accurate`, `overestimating`).
+  - Implemented gradual learning with exponential moving average damping (`0.70 * prior + 0.30 * observed_ratio`) preventing single outlier distortion.
+  - Implemented 3-stage learning lifecycle (`cold_start` < 3 items, `calibrating` 3–9 items, `calibrated` >= 10 items) preventing premature personalization.
+  - Built telemetry and recalibration REST endpoints:
+    - `GET /api/v1/insights/summary`: Returns full user pace telemetry, estimation accuracy, rolling bias, category breakdowns, and confidence levels.
+    - `POST /api/v1/insights/recalibrate-pace`: Triggers recalibration across all historical observations and updates `UserPaceFactor` database records.
+  - Added comprehensive integration tests covering cold-start state, tracking sessions, completion transitions, recalibration triggers, and rolling bias detection.
+- **Files**:
+  - `backend/app/schemas/insights.py`
+  - `backend/app/schemas/tracking.py`
+  - `backend/app/services/ai/personalization_service.py`
+  - `backend/app/api/v1/endpoints/insights.py`
+  - `backend/app/api/v1/router.py`
+  - `backend/tests/integration/test_insights_api.py`
+- **Tests**: 3 integration tests passing in `test_insights_api.py`. Total 58 tests passing across backend suite.
+- **Next Phase**: Phase 17 — AI Planning Assistance.
 
 ---
 

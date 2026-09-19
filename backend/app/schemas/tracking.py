@@ -53,7 +53,7 @@ class SessionStopResponse(AppBaseModel):
 class ManualTimeEntryCreate(AppBaseModel):
     work_item_id: Optional[str] = None
     work_unit_id: Optional[str] = None
-    start_time: datetime
-    end_time: datetime
+    start_time: datetime = Field(..., alias="start_time_utc")
+    end_time: datetime = Field(..., alias="end_time_utc")
     duration_minutes: Optional[int] = None
     notes: Optional[str] = None
