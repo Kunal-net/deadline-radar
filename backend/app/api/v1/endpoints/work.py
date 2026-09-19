@@ -203,3 +203,49 @@ async def recalculate_workload(
     from app.services.background_recalculation import BackgroundRecalculationService
     service = BackgroundRecalculationService(db)
     return await service.recalculate_user_workload(current_user.id)
+
+
+@router.get(
+    "/{work_id}/explanation",
+    summary="Get grounded AI explanation for work item risk and priority",
+)
+async def get_work_item_explanation(
+    work_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from app.services.ai.ai_service import AIService
+    from app.services.ai.schemas import ExplanationRequest
+    from datetime import datetime, timezone
+    
+    work_service = WorkService(db)
+    item = await work_service.get_work_item(work_id, current_user.id)
+
+    now = datetime.now(timezone.utc)
+    days_left = None
+    if item.deadline_utc:
+        try:
+            dl = datetime.fromisoformat(item.deadline_utc.replace("Z", "+00:00"))
+            days_left = max(0.0, round((dl - now).total_seconds() / 86400.0, 1))
+        except Exception:
+            pass
+
+    avail = (
+        round(item.remaining_estimated_hours / item.risk_ratio, 1)
+        if (item.risk_ratio and item.risk_ratio > 0)
+        else 8.0
+    )
+
+    req = ExplanationRequest(
+        work_id=item.id,
+        title=item.title,
+        risk_state=item.risk_state,
+        risk_ratio=item.risk_ratio,
+        dynamic_priority=item.dynamic_priority,
+        remaining_hours=item.remaining_estimated_hours,
+        available_hours=avail,
+        days_until_deadline=days_left,
+        factors=[item.priority_explanation] if item.priority_explanation else [],
+    )
+    ai_service = AIService(db=db)
+    return await ai_service.explainer.explain(req)

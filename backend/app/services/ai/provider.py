@@ -336,11 +336,32 @@ class MockAIProvider(BaseAIProvider):
         else:
             recs.append("Maintain steady progression according to daily plan.")
 
+        grounded = {
+            "work_id": request.work_id,
+            "title": request.title,
+            "risk_state": request.risk_state,
+            "risk_ratio": request.risk_ratio,
+            "dynamic_priority": request.dynamic_priority,
+            "remaining_hours": request.remaining_hours,
+            "available_hours": request.available_hours,
+            "days_until_deadline": request.days_until_deadline,
+        }
+
+        var_exp = None
+        if request.risk_state in {"critical", "at_risk"}:
+            var_exp = (
+                f"Deficit variance: Current trajectory requires {request.remaining_hours:.1f}h work "
+                f"against {request.available_hours:.1f}h capacity ({request.risk_ratio:.2f}x ratio). "
+                "Immediate mitigation required."
+            )
+
         return ExplanationResponse(
             summary=summary,
             risk_explanation=risk_exp,
             priority_explanation=prio_exp,
+            variance_explanation=var_exp,
             actionable_recommendations=recs,
+            grounded_metrics=grounded,
         )
 
     async def assist_planning(self, request: PlanningAssistanceRequest) -> PlanningAssistanceResponse:

@@ -16,6 +16,8 @@ from app.services.ai.schemas import (
     DecompositionResponse,
     EffortEstimationRequest,
     EffortEstimationResponse,
+    ExplanationRequest,
+    ExplanationResponse,
     PlanningAssistanceRequest,
     PlanningAssistanceResponse,
     WorkInterpretationRequest,
@@ -236,3 +238,65 @@ async def assist_planning(
         top_items=payload.top_items,
         conflicts=payload.conflicts,
     )
+
+
+@router.post(
+    "/explain",
+    response_model=ExplanationResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Generate Grounded AI Explanation",
+    description="Generates concise, human-understandable explanations for deadline risk, priority drivers, and capacity gaps grounded strictly in validated numbers.",
+)
+async def explain_metrics(
+    payload: ExplanationRequest,
+    current_user: User = Depends(get_current_user),
+    ai_service: AIService = Depends(get_ai_service),
+) -> ExplanationResponse:
+    logger.info("Generating AI explanation for '%s' (user_id=%s)", payload.title, current_user.id)
+    return await ai_service.explainer.explain(payload)
+
+
+@router.get(
+    "/work/{work_id}/explanation",
+    response_model=ExplanationResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Explain Work Item Risk & Priority",
+    description="Loads active work item telemetry and generates a grounded, concise natural language explanation for why it is risky or prioritized.",
+)
+async def explain_work_item(
+    work_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    ai_service: AIService = Depends(get_ai_service),
+) -> ExplanationResponse:
+    from datetime import datetime, timezone
+    work_service = WorkService(db)
+    item = await work_service.get_work_item(work_id, current_user.id)
+
+    now = datetime.now(timezone.utc)
+    days_left = None
+    if item.deadline_utc:
+        try:
+            dl = datetime.fromisoformat(item.deadline_utc.replace("Z", "+00:00"))
+            days_left = max(0.0, round((dl - now).total_seconds() / 86400.0, 1))
+        except Exception:
+            pass
+
+    avail = (
+        round(item.remaining_estimated_hours / item.risk_ratio, 1)
+        if (item.risk_ratio and item.risk_ratio > 0)
+        else 8.0
+    )
+
+    req = ExplanationRequest(
+        work_id=item.id,
+        title=item.title,
+        risk_state=item.risk_state,
+        risk_ratio=item.risk_ratio,
+        dynamic_priority=item.dynamic_priority,
+        remaining_hours=item.remaining_estimated_hours,
+        available_hours=avail,
+        days_until_deadline=days_left,
+        factors=[item.priority_explanation] if item.priority_explanation else [],
+    )
+    return await ai_service.explainer.explain(req)

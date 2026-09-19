@@ -117,7 +117,9 @@ class ExplanationResponse(BaseModel):
     summary: str
     risk_explanation: str
     priority_explanation: str
+    variance_explanation: Optional[str] = None
     actionable_recommendations: List[str] = []
+    grounded_metrics: Dict[str, Any] = {}
 
 
 class PlanningAssistanceRequest(BaseModel):
