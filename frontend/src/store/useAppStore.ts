@@ -18,6 +18,11 @@ interface AppState {
 
   todayAdjustmentNote: string | null;
   setTodayAdjustmentNote: (note: string | null) => void;
+
+  weeklyCapacityHours: number;
+  velocityMultiplier: number;
+  selectedBoundaries: string[];
+  updateCalibration: (capacity: number, multiplier: number, boundaries: string[]) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -63,4 +68,15 @@ export const useAppStore = create<AppState>((set) => ({
 
   todayAdjustmentNote: null,
   setTodayAdjustmentNote: (note) => set({ todayAdjustmentNote: note }),
+
+  weeklyCapacityHours: 18.5,
+  velocityMultiplier: 1.2,
+  selectedBoundaries: ['sleep', 'exercise', 'sanctuary'],
+  updateCalibration: (capacity, multiplier, boundaries) =>
+    set({
+      weeklyCapacityHours: capacity,
+      velocityMultiplier: multiplier,
+      selectedBoundaries: boundaries,
+    }),
 }));
+

@@ -20,7 +20,7 @@ This document tracks the sequential execution of all 20 phases from `deadline_ra
 | **Phase 10** | Planning | **Completed** | 2026-09-20 | Calibrated focus windows, non-negotiable boundaries, 168h equilibrium, dynamic adjustment |
 | **Phase 11** | Timeline / Calendar / Workload / Priorities | **Completed** | 2026-09-20 | Temporal views, capacity envelopes, workload concentration |
 | **Phase 12** | Insights | **Completed** | 2026-09-20 | Estimation variance, velocity, learning, anti-fake stats, early-data state |
-| **Phase 13** | Onboarding | Pending | — | Personalization onboarding flow, commitments setup |
+| **Phase 13** | Onboarding | **Completed** | 2026-09-20 | Personalization calibration flow, non-negotiable boundaries, store persistence |
 | **Phase 14** | Responsive Design | Pending | — | Multi-device layout testing & refinement |
 | **Phase 15** | Accessibility | Pending | — | WCAG AA compliance pass, keyboard nav, ARIA attributes |
 | **Phase 16** | Backend Integration | Pending | — | Connect to FastAPI REST API, TanStack Query, error boundaries |
@@ -210,5 +210,29 @@ This document tracks the sequential execution of all 20 phases from `deadline_ra
   - ESLint: 0 warnings
   - Vite build: passed (built in 3.96s)
 - **Next Phase**: Phase 13 — Onboarding
+
+---
+
+## Phase 13: Onboarding Log
+- **Date**: 2026-09-20
+- **Status**: Completed
+- **Skills Used**: `stitch-design-taste`, `high-end-visual-design`, `impeccable`, `motion`, `code-review`
+- **Files Modified/Created**:
+  - `frontend/src/pages/OnboardingView.tsx` (Screen `0df116b91c8f4261ad87f5051b374e7f`)
+  - `frontend/src/store/useAppStore.ts`
+- **Stitch MCP Elements Mapped**:
+  - **Calibrated Baseline Wizard**: Step 2 of 3 Phase 02 Calibration flow with display hero typography ("Tell us how you *actually* work").
+  - **01 / Cognitive Bandwidth**: Interactive slider (8.0h to 35.0h) with real-time daily focus breakdown (`~3.7 hrs/day`).
+  - **02 / Non-Negotiables**: Interactive selectable chips for protected life boundaries (Sleep 56h, Exercise 10.5h, Evening Sanctuary 24.5h, Family/Social 32h).
+  - **03 / Reality Bias Factor**: Precision radio selectors for personal execution time reality factors (1.0x, 1.2x, 1.35x).
+  - **Living Diurnal Rhythm Plate**: Sticky right column with 168-hour mathematical breakdown (Cognitive, Rest & Life, Discretionary Margin) and real-time distribution progress bars.
+  - **Architectural Desk Still Life Plate**: Photographic accent (`/assets/onboarding-desk.jpg`) with canonical biology quote.
+  - **Store Persistence**: Direct synchronization into `useAppStore` updating application-wide focus budgets and velocity multipliers upon completion.
+- **Validation Performed**:
+  - TypeScript `tsc --noEmit`: 0 errors
+  - ESLint: 0 warnings
+  - Vite build: passed (built in 3.44s)
+- **Next Phase**: Phase 14 — Responsive Design
+
 
 
