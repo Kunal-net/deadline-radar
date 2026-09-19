@@ -2,9 +2,9 @@
 
 ## Overall Status
 
-- **Current Phase**: Phase 13 Completed — Transitioning to Phase 14
-- **Completed Phases**: Phase 01 to Phase 13
-- **Remaining Phases**: Phase 14 to Phase 20
+- **Current Phase**: Phase 14 Completed — Transitioning to Phase 15
+- **Completed Phases**: Phase 01 to Phase 14
+- **Remaining Phases**: Phase 15 to Phase 20
 - **Overall Status**: In Progress (Autonomous Execution Active)
 
 ---
@@ -370,12 +370,22 @@
 ---
 
 ## Phase 14 — AI Decomposition
-- **Status**: Pending
-- **Date**: —
-- **Summary**: —
-- **Files**: —
-- **Tests**: —
-- **Notes**: —
+- **Status**: Completed
+- **Date**: 2026-09-20
+- **Summary**:
+  - Implemented AI Work Decomposition system supporting both standalone project breakdown and contextual decomposition of existing work items (`POST /api/v1/ai/decompose`, `POST /api/v1/ai/work/{work_id}/decompose`).
+  - Produces sequential, actionable, discrete work units with estimated hours, dependency indexing, and calibrated confidence scoring while avoiding unnecessary microtasks.
+  - Implemented user confirmation and persistence endpoint `POST /api/v1/ai/work/{work_id}/apply-decomposition` allowing users to review, edit, and apply suggested units to their work items.
+  - Automatically updates remaining effort hours and recalculates risk/priority metrics upon decomposition application.
+  - Enforced strict row-level ownership isolation and error handling.
+  - Added integration tests covering standalone decomposition, dependency detection, existing work decomposition, and subtask application.
+- **Files**:
+  - `backend/app/services/ai/schemas.py`
+  - `backend/app/services/ai/provider.py`
+  - `backend/app/api/v1/endpoints/ai.py`
+  - `backend/tests/integration/test_ai_endpoints.py`
+- **Tests**: 6 integration tests passing in `test_ai_endpoints.py`. Total 53 tests passing across backend suite.
+- **Next Phase**: Phase 15 — AI Effort Estimation.
 
 ---
 

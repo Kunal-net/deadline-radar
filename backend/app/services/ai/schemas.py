@@ -30,11 +30,20 @@ class WorkInterpretationResponse(BaseModel):
 
 
 class DecompositionRequest(BaseModel):
-    work_title: str = Field(..., min_length=2, max_length=255)
+    title: Optional[str] = None
+    work_title: Optional[str] = None
     description: Optional[str] = None
     category: str = "academic"
     deadline_utc: Optional[str] = None
+    target_deadline: Optional[str] = None
     estimated_hours: Optional[float] = None
+
+    @property
+    def effective_title(self) -> str:
+        t = self.title or self.work_title
+        if not t:
+            raise ValueError("Either 'title' or 'work_title' must be provided.")
+        return t.strip()
 
 
 class SuggestedUnit(BaseModel):
@@ -42,13 +51,22 @@ class SuggestedUnit(BaseModel):
     title: str
     description: Optional[str] = None
     estimated_hours: float = 1.0
+    dependencies: List[int] = []
 
 
 class DecompositionResponse(BaseModel):
+    suggested_category: str = "academic"
     suggested_units: List[SuggestedUnit] = []
     total_estimated_hours: float
     confidence_score: float = 0.85
+    reasoning_summary: Optional[str] = None
     decomposition_notes: Optional[str] = None
+    detected_missing_information: List[str] = []
+
+
+class ApplyDecompositionRequest(BaseModel):
+    units: List[SuggestedUnit]
+    replace_existing: bool = False
 
 
 class EffortEstimationRequest(BaseModel):

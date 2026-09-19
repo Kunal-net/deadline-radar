@@ -180,38 +180,45 @@ class MockAIProvider(BaseAIProvider):
         )
 
     async def decompose_work(self, request: DecompositionRequest) -> DecompositionResponse:
-        title = request.work_title
+        title = request.effective_title
         total_hours = request.estimated_hours if (request.estimated_hours and request.estimated_hours > 0) else 4.5
         cat = (request.category or "academic").lower()
 
         units: List[SuggestedUnit] = []
         if cat == "exam_prep":
             units = [
-                SuggestedUnit(sequence_order=1, title=f"Review lecture notes & core theorems for {title}", estimated_hours=round(total_hours * 0.35, 1)),
-                SuggestedUnit(sequence_order=2, title="Solve past exam questions & problem sets", estimated_hours=round(total_hours * 0.40, 1)),
-                SuggestedUnit(sequence_order=3, title="Timed mock exam simulation & error analysis", estimated_hours=round(total_hours * 0.25, 1)),
+                SuggestedUnit(sequence_order=1, title=f"Review lecture notes & core theorems for {title}", estimated_hours=round(total_hours * 0.35, 1), dependencies=[]),
+                SuggestedUnit(sequence_order=2, title="Solve past exam questions & problem sets", estimated_hours=round(total_hours * 0.40, 1), dependencies=[1]),
+                SuggestedUnit(sequence_order=3, title="Timed mock exam simulation & error analysis", estimated_hours=round(total_hours * 0.25, 1), dependencies=[2]),
             ]
         elif cat == "project":
             units = [
-                SuggestedUnit(sequence_order=1, title=f"System architecture & schema design for {title}", estimated_hours=round(total_hours * 0.25, 1)),
-                SuggestedUnit(sequence_order=2, title="Core logic & service implementation", estimated_hours=round(total_hours * 0.45, 1)),
-                SuggestedUnit(sequence_order=3, title="Unit tests, integration checks & bug fixing", estimated_hours=round(total_hours * 0.20, 1)),
-                SuggestedUnit(sequence_order=4, title="Documentation, README & demo preparation", estimated_hours=round(total_hours * 0.10, 1)),
+                SuggestedUnit(sequence_order=1, title=f"System architecture & schema design for {title}", estimated_hours=round(total_hours * 0.25, 1), dependencies=[]),
+                SuggestedUnit(sequence_order=2, title="Core logic & service implementation", estimated_hours=round(total_hours * 0.45, 1), dependencies=[1]),
+                SuggestedUnit(sequence_order=3, title="Unit tests, integration checks & bug fixing", estimated_hours=round(total_hours * 0.20, 1), dependencies=[2]),
+                SuggestedUnit(sequence_order=4, title="Documentation, README & demo preparation", estimated_hours=round(total_hours * 0.10, 1), dependencies=[3]),
             ]
         else:
             units = [
-                SuggestedUnit(sequence_order=1, title=f"Literature & source material collection for {title}", estimated_hours=round(total_hours * 0.25, 1)),
-                SuggestedUnit(sequence_order=2, title="First comprehensive working draft", estimated_hours=round(total_hours * 0.50, 1)),
-                SuggestedUnit(sequence_order=3, title="Review, proofreading, citation validation & final export", estimated_hours=round(total_hours * 0.25, 1)),
+                SuggestedUnit(sequence_order=1, title=f"Literature & source material collection for {title}", estimated_hours=round(total_hours * 0.25, 1), dependencies=[]),
+                SuggestedUnit(sequence_order=2, title="First comprehensive working draft", estimated_hours=round(total_hours * 0.50, 1), dependencies=[1]),
+                SuggestedUnit(sequence_order=3, title="Review, proofreading, citation validation & final export", estimated_hours=round(total_hours * 0.25, 1), dependencies=[2]),
             ]
 
         computed_total = sum(u.estimated_hours for u in units)
 
+        missing = []
+        if request.estimated_hours is None:
+            missing.append("No initial target effort was specified; calibrated heuristic baseline applied.")
+
         return DecompositionResponse(
+            suggested_category=cat,
             suggested_units=units,
             total_estimated_hours=round(computed_total, 1),
-            confidence_score=0.90,
+            confidence_score=0.90 if request.estimated_hours else 0.82,
+            reasoning_summary=f"Structured progressive breakdown of '{title}' into {len(units)} sequential milestones.",
             decomposition_notes=f"Decomposed '{title}' into {len(units)} discrete, actionable focus milestones.",
+            detected_missing_information=missing,
         )
 
     async def estimate_effort(self, request: EffortEstimationRequest) -> EffortEstimationResponse:
@@ -368,7 +375,7 @@ class GeminiProvider(BaseAIProvider):
             async with httpx.AsyncClient(timeout=settings.AI_TIMEOUT_SECONDS) as client:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={self.api_key}"
                 prompt = (
-                    f"Decompose work item '{request.work_title}' (Category: {request.category}, Total: {request.estimated_hours}h) "
+                    f"Decompose work item '{request.effective_title}' (Category: {request.category}, Total: {request.estimated_hours}h) "
                     "into 3-5 sequential work units with title, description, and estimated_hours. "
                     "Respond in JSON matching: suggested_units (list), total_estimated_hours, confidence_score, decomposition_notes."
                 )

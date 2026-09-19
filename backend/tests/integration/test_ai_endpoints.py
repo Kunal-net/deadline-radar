@@ -113,3 +113,62 @@ async def test_ai_interpretation_to_work_creation_flow(
     created_work = create_res.json()
     assert created_work["title"] == candidate["title"]
     assert len(created_work["units"]) == len(candidate["suggested_subtasks"])
+
+
+@pytest.mark.asyncio
+async def test_ai_decomposition_endpoints_and_confirmation_flow(
+    client: AsyncClient, auth_headers: dict
+):
+    # 1. Standalone Decomposition
+    dec_res = await client.post(
+        "/api/v1/ai/decompose",
+        json={
+            "title": "Build Distributed Consensus Engine",
+            "category": "project",
+            "estimated_hours": 8.0,
+        },
+        headers=auth_headers,
+    )
+    assert dec_res.status_code == 200
+    dec_data = dec_res.json()
+    assert len(dec_data["suggested_units"]) >= 3
+    assert dec_data["total_estimated_hours"] > 0
+    assert dec_data["confidence_score"] >= 0.8
+    assert any(len(u.get("dependencies", [])) > 0 for u in dec_data["suggested_units"][1:])
+
+    # 2. Create an undecomposed WorkItem
+    work_res = await client.post(
+        "/api/v1/work",
+        json={
+            "title": "Quarterly Performance Review Report",
+            "category": "career",
+            "estimated_effort_hours": 6.0,
+            "deadline_utc": "2026-09-30T18:00:00Z",
+        },
+        headers=auth_headers,
+    )
+    assert work_res.status_code == 201
+    work_item = work_res.json()
+    work_id = work_item["id"]
+    assert len(work_item.get("units") or []) == 0
+
+    # 3. Decompose the existing WorkItem
+    item_dec_res = await client.post(
+        f"/api/v1/ai/work/{work_id}/decompose",
+        headers=auth_headers,
+    )
+    assert item_dec_res.status_code == 200
+    item_dec = item_dec_res.json()
+    assert len(item_dec["suggested_units"]) >= 2
+
+    # 4. User confirms and applies decomposition
+    apply_res = await client.post(
+        f"/api/v1/ai/work/{work_id}/apply-decomposition",
+        json={"units": item_dec["suggested_units"]},
+        headers=auth_headers,
+    )
+    assert apply_res.status_code == 200
+    updated_item = apply_res.json()
+    assert len(updated_item["units"]) == len(item_dec["suggested_units"])
+    assert updated_item["remaining_estimated_hours"] > 0
+
