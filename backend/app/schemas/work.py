@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import List, Optional
-from pydantic import Field
+from pydantic import Field, computed_field
 from app.schemas.common import AppBaseModel, PaginatedResponse
 
 
@@ -73,6 +73,38 @@ class WorkUnitResponse(AppBaseModel):
     actual_hours: float
     is_user_verified: bool
 
+    @computed_field
+    def estimated_minutes(self) -> int:
+        return int(self.estimated_hours * 60)
+
+    @computed_field
+    def completed_minutes(self) -> int:
+        return int(self.actual_hours * 60)
+
+    @computed_field
+    def order_index(self) -> int:
+        return self.sequence_order
+
+    @computed_field
+    def workItemId(self) -> str:
+        return self.work_item_id
+
+    @computed_field
+    def isCompleted(self) -> bool:
+        return self.is_completed
+
+    @computed_field
+    def estimatedMinutes(self) -> int:
+        return int(self.estimated_hours * 60)
+
+    @computed_field
+    def completedMinutes(self) -> int:
+        return int(self.actual_hours * 60)
+
+    @computed_field
+    def orderIndex(self) -> int:
+        return self.sequence_order
+
 
 class WorkItemResponse(AppBaseModel):
     id: str
@@ -96,6 +128,62 @@ class WorkItemResponse(AppBaseModel):
     units: Optional[List[WorkUnitResponse]] = None
     created_at: str
     updated_at: str
+
+    @computed_field
+    def remaining_effort_hours(self) -> float:
+        return self.remaining_estimated_hours
+
+    @computed_field
+    def estimated_effort_hours(self) -> float:
+        return self.total_estimated_hours
+
+    @computed_field
+    def actual_logged_hours(self) -> float:
+        return self.total_actual_hours
+
+    @computed_field
+    def dynamic_priority_score(self) -> float:
+        return self.dynamic_priority
+
+    @computed_field
+    def risk_level(self) -> str:
+        return self.risk_state.upper()
+
+    @computed_field
+    def deadlineUtc(self) -> Optional[str]:
+        return self.deadline_utc
+
+    @computed_field
+    def isHardDeadline(self) -> bool:
+        return self.is_hard_deadline
+
+    @computed_field
+    def estimatedEffortHours(self) -> float:
+        return self.total_estimated_hours
+
+    @computed_field
+    def remainingEffortHours(self) -> float:
+        return self.remaining_estimated_hours
+
+    @computed_field
+    def actualLoggedHours(self) -> float:
+        return self.total_actual_hours
+
+    @computed_field
+    def dynamicPriorityScore(self) -> float:
+        return self.dynamic_priority
+
+    @computed_field
+    def riskLevel(self) -> str:
+        return self.risk_state.upper()
+
+    @computed_field
+    def createdAt(self) -> str:
+        return self.created_at
+
+    @computed_field
+    def updatedAt(self) -> str:
+        return self.updated_at
 
 
 class WorkUnitsListResponse(AppBaseModel):
