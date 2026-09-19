@@ -104,12 +104,32 @@
 ---
 
 ## Phase 04 — Domain Models & Repositories
-- **Status**: Pending
-- **Date**: —
-- **Summary**: —
-- **Files**: —
-- **Tests**: —
-- **Notes**: —
+- **Status**: Completed
+- **Date**: 2026-09-20
+- **Summary**:
+  - Implemented generic `BaseRepository[ModelType]` providing type-safe CRUD operations over `AsyncSession`.
+  - Built domain-specific repositories:
+    - `UserRepository`: queries by email, profile with preferences, user interests.
+    - `WorkItemRepository`: list/count with multi-field filtering, sorting, sequence reordering of work units, and estimation logging.
+    - `AvailabilityRepository`: 7-day recurring schedule templates replacement, date-range schedule blocks.
+    - `TrackingRepository`: unique active timer session checks, time entry logs with date range queries.
+    - `PlanningRepository`: daily plan lookups with eagerly loaded work item / unit references.
+    - `InsightsRepository`: pace factor lookup, upsert, and user total logged/estimated hours.
+    - `NotificationRepository`: unread count queries, single and batch mark-as-read updates.
+  - Added unit tests for repositories validating user flow, work item unit reordering, schedule blocks, and notification count/updates.
+- **Files**:
+  - `backend/app/repositories/base.py`
+  - `backend/app/repositories/user_repo.py`
+  - `backend/app/repositories/work_repo.py`
+  - `backend/app/repositories/availability_repo.py`
+  - `backend/app/repositories/tracking_repo.py`
+  - `backend/app/repositories/planning_repo.py`
+  - `backend/app/repositories/insights_repo.py`
+  - `backend/app/repositories/notification_repo.py`
+  - `backend/app/repositories/__init__.py`
+  - `backend/tests/unit/test_repositories.py`
+- **Tests**: 15 unit tests passing across database schema, security, health, and repository suites.
+- **Next Phase**: Phase 05 — Authentication & User Preferences.
 
 ---
 
