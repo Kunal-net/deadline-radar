@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Formalized complete, implementation-ready 32-section Product Requirements Document (`docs/prd.md`) defining target personas, user journeys, MVP scope boundaries, opportunity data model, lifecycle states, in-app notifications, and testable acceptance criteria.
+- Updated project context (`docs/project-context.md`) with confirmed MVP decisions regarding notification channels, AI feature scoping, and lifecycle separation.
 - Initial project directory structure (`frontend/`, `backend/`, `ai-model/`, `docs/`, `.github/`)
 - Project context documentation (`docs/project-context.md`)
 - Product requirements document (`docs/prd.md`)

@@ -132,15 +132,17 @@ The critical failure point is not merely discovering opportunities—it is **rem
 2. **Backend Direction**: FastAPI + SQLAlchemy + PostgreSQL chosen based on developer proficiency and async performance.
 3. **Decoupled AI Layer**: AI capabilities are isolated as external services/modular interfaces so underlying models can be swapped without rewriting business logic.
 4. **Documentation-Driven Development**: All endpoints, schemas, and architecture are documented before implementation.
+5. **Notification Delivery for MVP**: In-app notification center is the primary delivery channel for MVP, eliminating external email/SMTP dependencies while establishing milestone triggers (7d, 3d, 1d, day-of). Transactional email is deferred to post-MVP.
+6. **Distinct Opportunity vs. Application Lifecycles**: Strict separation between system-wide opportunity status (`OPEN`, `CLOSING_SOON`, `EXPIRED`) and private user tracking lifecycle (`SAVED`, `INTERESTED`, `APPLYING`, `APPLIED`, `SELECTED`, `REJECTED`, `COMPLETED`, `ARCHIVED`).
+7. **Scoped AI Capabilities**: MVP AI is focused strictly on unstructured entity extraction, taxonomy classification, and 2-sentence summaries. Semantic vector search and resume-matching recommendations are deferred.
 
 ---
 
 ## Open Questions
-1. **Frontend Stack**: Selection between Vite + React + TypeScript vs. Next.js vs. alternative modern frameworks.
+1. **Frontend Stack**: Selection between Vite + React + TypeScript vs. Next.js (Working assumption: Vite + React + TypeScript SPA).
 2. **Authentication Mechanism**: JWT in HTTP-only cookies vs. Bearer tokens in localStorage, OAuth2 providers (Google/GitHub).
-3. **Notification Channel**: In-app only for MVP vs. Email notifications via transactional email provider.
-4. **AI Inference Strategy**: Direct hosted LLM API (Gemini/OpenAI) vs. local open-source models (Sentence-Transformers / Ollama).
-5. **Hosting & Deployment**: Selection between Render, Fly.io, Railway, or VPS.
+3. **AI Inference Provider**: Selection of specific LLM provider for extraction (Working assumption: Gemini 1.5 Flash or OpenAI GPT-4o-mini).
+4. **Hosting & Deployment**: Selection between Render, Fly.io, Railway, or VPS.
 
 ---
 
