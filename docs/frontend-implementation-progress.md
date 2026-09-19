@@ -14,8 +14,8 @@ This document tracks the sequential execution of all 20 phases from `deadline_ra
 | **Phase 4** | Shared Design System | **Completed** | 2026-09-19 | Centralized design tokens in `src/tokens/`, strict typography, 0px radius |
 | **Phase 5** | Today Screen | **Completed** | 2026-09-19 | DailyBriefHero, DayShapePlate (55/45), ActionablePrioritiesList, NaturalScheduleAdjustment |
 | **Phase 6** | Radar Screen | **Completed** | 2026-09-20 | RadarHero, CapacityBalancePlate, ApproachingDeadlinesList, FeasibilityIntake |
-| **Phase 7** | Work | **In Progress** | 2026-09-20 | Implementing Work workspace, open list rows, search/filtering, status |
-| **Phase 8** | Add Work | Pending | — | Natural language intake, AI decomposition, extraction, confirmation |
+| **Phase 7** | Work | **Completed** | 2026-09-20 | Work workspace, open ledger rows, search/filtering/sorting, natural intake |
+| **Phase 8** | Add Work | **In Progress** | 2026-09-20 | Natural language intake, AI decomposition, extraction, confirmation |
 | **Phase 9** | Work Detail | Pending | — | Detail view, dependencies, schedule, variance analysis |
 | **Phase 10** | Planning | Pending | — | Capacity-aware planning, schedule generation, adjustments |
 | **Phase 11** | Timeline / Calendar / Workload / Priorities | Pending | — | Temporal views, capacity envelopes, workload concentration |
@@ -72,3 +72,25 @@ This document tracks the sequential execution of all 20 phases from `deadline_ra
   - ESLint: 0 warnings
   - Vite build: passed (built in 3.56s)
 - **Next Phase**: Phase 7 — Work Screen
+
+---
+
+## Phase 7: Work Workspace Log
+- **Date**: 2026-09-20
+- **Status**: Completed
+- **Skills Used**: `stitch-design-taste`, `high-end-visual-design`, `impeccable`, `motion`
+- **Files Modified/Created**:
+  - `frontend/src/pages/WorkListView.tsx`
+- **Stitch MCP Elements Mapped**:
+  - Screen ID: `f11d61660dad49e294b40f6b0329168d` ("Work — Deadline Radar")
+  - Workspace Header with display hero typography and Add Work action
+  - Minimal Summary Bar (Active Tasks, Total Remaining, Available this week, On schedule status buffer)
+  - Open Ledger Rows with progress bars, risk indicators, score badges, and action triggers
+  - Search, category filter pills (All, Academic, Backend & Dev, Design & Research, High Risk), and multi-criteria sorting
+  - Architect Desk Photograph Accent (`/assets/workledger-desk.jpg`) with Plate 03 caption
+  - Natural task intake bar with keyboard return listener and live feedback
+- **Validation Performed**:
+  - TypeScript `tsc --noEmit`: 0 errors
+  - ESLint: 0 warnings
+  - Vite build: passed (built in 4.54s)
+- **Next Phase**: Phase 8 — Add Work Screen
