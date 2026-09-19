@@ -13,8 +13,8 @@ This document tracks the sequential execution of all 20 phases from `deadline_ra
 | **Phase 3** | Stitch Screen Extraction | **Completed** | 2026-09-19 | Extracted all 20 screens/assets from Stitch MCP into route definitions |
 | **Phase 4** | Shared Design System | **Completed** | 2026-09-19 | Centralized design tokens in `src/tokens/`, strict typography, 0px radius |
 | **Phase 5** | Today Screen | **Completed** | 2026-09-19 | DailyBriefHero, DayShapePlate (55/45), ActionablePrioritiesList, NaturalScheduleAdjustment |
-| **Phase 6** | Radar Screen | **In Progress** | 2026-09-20 | Implementing full Stitch fidelity, temporal intelligence, risk calculations |
-| **Phase 7** | Work | Pending | — | Work workspace, open list rows, search/filtering, status |
+| **Phase 6** | Radar Screen | **Completed** | 2026-09-20 | RadarHero, CapacityBalancePlate, ApproachingDeadlinesList, FeasibilityIntake |
+| **Phase 7** | Work | **In Progress** | 2026-09-20 | Implementing Work workspace, open list rows, search/filtering, status |
 | **Phase 8** | Add Work | Pending | — | Natural language intake, AI decomposition, extraction, confirmation |
 | **Phase 9** | Work Detail | Pending | — | Detail view, dependencies, schedule, variance analysis |
 | **Phase 10** | Planning | Pending | — | Capacity-aware planning, schedule generation, adjustments |
@@ -48,3 +48,27 @@ This document tracks the sequential execution of all 20 phases from `deadline_ra
   - ESLint: 0 warnings
   - Vite build: passed
 - **Next Phase**: Phase 6 — Radar
+
+---
+
+## Phase 6: Radar Screen Log
+- **Date**: 2026-09-20
+- **Status**: Completed
+- **Skills Used**: `stitch-design-taste`, `high-end-visual-design`, `impeccable`, `motion`
+- **Files Modified/Created**:
+  - `frontend/src/pages/RadarView.tsx`
+  - `frontend/src/components/radar/RadarHero.tsx`
+  - `frontend/src/components/radar/CapacityBalancePlate.tsx`
+  - `frontend/src/components/radar/ApproachingDeadlinesList.tsx`
+  - `frontend/src/components/radar/FeasibilityIntake.tsx`
+- **Stitch MCP Elements Mapped**:
+  - Screen ID: `83c355eb8e7f42ffbe878105d77c8368` ("Radar — Deadline Radar")
+  - Section 1: Editorial Hero & Asymmetric Split with canonical Hourglass image overlay (`/assets/hourglass-temporal.jpg`)
+  - Section 2: Reality check capacity balance (Available 18.5h vs committed 14.5h vs net buffer +4.0h, progress distribution bar)
+  - Section 3: Open list of approaching deliverables with high/normal/low risk badges & focus action links
+  - Section 4: Deterministic feasibility evaluation input ("Parse & Anchor →")
+- **Validation Performed**:
+  - TypeScript `tsc --noEmit`: 0 errors
+  - ESLint: 0 warnings
+  - Vite build: passed (built in 3.56s)
+- **Next Phase**: Phase 7 — Work Screen
