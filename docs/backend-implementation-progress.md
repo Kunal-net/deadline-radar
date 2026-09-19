@@ -134,12 +134,28 @@
 ---
 
 ## Phase 05 — Authentication & User Preferences
-- **Status**: Pending
-- **Date**: —
-- **Summary**: —
-- **Files**: —
-- **Tests**: —
-- **Notes**: —
+- **Status**: Completed
+- **Date**: 2026-09-20
+- **Summary**:
+  - Implemented JWT authentication and registration workflows (`AuthService`, `/api/v1/auth/register`, `/api/v1/auth/login`, `/api/v1/auth/me`).
+  - Implemented automated default seeding during registration: initial user preferences and 7-day default recurring weekly availability templates (4h/day weekdays, 8h/day weekends).
+  - Implemented user preferences API (`UserService`, `GET /api/v1/users/me/preferences`, `PATCH /api/v1/users/me/preferences`).
+  - Implemented protected personal interests API (`GET /api/v1/users/me/interests`, `POST /api/v1/users/me/interests`, `DELETE /api/v1/users/me/interests/{id}`).
+  - Built `get_current_user` FastAPI dependency verifying Bearer JWT tokens and ensuring active account validation with eager-loaded preferences to prevent async lazy loading issues.
+  - Implemented strict row-level user data isolation across all endpoints.
+  - Added integration tests covering registration, duplicate email rejection, login failure/success, token auth, preference updates, interest CRUD, and cross-user data isolation.
+- **Files**:
+  - `backend/app/schemas/auth.py`
+  - `backend/app/schemas/user.py`
+  - `backend/app/api/deps.py`
+  - `backend/app/services/auth_service.py`
+  - `backend/app/services/user_service.py`
+  - `backend/app/api/v1/endpoints/auth.py`
+  - `backend/app/api/v1/endpoints/users.py`
+  - `backend/app/api/v1/router.py`
+  - `backend/tests/integration/test_auth_and_users.py`
+- **Tests**: 17 tests passing across unit and integration suites.
+- **Next Phase**: Phase 06 — Work Management API.
 
 ---
 
