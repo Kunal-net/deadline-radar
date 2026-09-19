@@ -124,7 +124,7 @@ The critical failure point is not merely discovering opportunities—it is **rem
 ---
 
 ## Current Development Status
-- **Phase**: Database Design Complete. Ready for API Contract Design.
+- **Phase**: API Contract Design Complete. Ready for Frontend & AI Model Specifications.
 - **Application Code**: None yet. Contracts and blueprints established first.
 
 ---
@@ -138,10 +138,11 @@ The critical failure point is not merely discovering opportunities—it is **rem
 6. **Native PostgreSQL Search**: Full-text `tsvector` and trigram `pg_trgm` used for MVP search; dedicated vector DB deferred to post-MVP via `pgvector` (ADR-006).
 7. **In-App Notification Center for MVP**: Proves reminder generation logic without third-party email deliverability dependencies (ADR-007).
 8. **Distinct Opportunity vs. Application Lifecycles**: Strict separation between system-wide opportunity status (`OPEN`, `CLOSING_SOON`, `EXPIRED`) and private user tracking lifecycle (`SAVED`, `INTERESTED`, `APPLYING`, `APPLIED`, `SELECTED`, `REJECTED`, `COMPLETED`, `ARCHIVED`).
-9. **Unified User Tracking Entity**: Single `user_tracking` table manages the entire user lifecycle with private notes and timestamps, avoiding fragmented tables.
+9. **Unified User Tracking Entity & API**: Single `/radar` resource manages the entire user lifecycle with private notes and timestamps, avoiding fragmented endpoints.
 10. **Separation of Authoritative vs. AI Data**: Core opportunity facts reside in `opportunities`, while AI summaries, bullets, and confidence scores reside in `opportunity_ai_metadata`.
 11. **Normalized Organizations & Sources**: Independent `organizations` and `sources` tables prevent string duplication and enable platform-wide deduplication.
-12. **Documentation-Driven Development**: All endpoints, schemas, and architecture are documented before implementation.
+12. **Idempotent Radar Tracking & Read Actions**: Saving already-tracked items returns the existing record idempotently; read receipts on notifications are idempotent.
+13. **Documentation-Driven Development**: All endpoints, schemas, and architecture are documented before implementation.
 
 ---
 

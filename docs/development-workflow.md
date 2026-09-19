@@ -14,8 +14,8 @@ The Deadline Radar repository follows a structured, documentation-driven progres
 | **Phase 1** | **Product Requirements Definition** | `docs/prd.md` | **COMPLETE** |
 | **Phase 2** | **System Architecture Design** | `docs/architecture.md` | **COMPLETE** |
 | **Phase 3** | **Database Schema & Data Modeling** | `docs/database-schema.md` | **COMPLETE** |
-| **Phase 4** | **API Contract Specification** | `docs/api-contract.md` | **NEXT PHASE** |
-| **Phase 5** | **AI Subsystem Specification** | `docs/ai-model-spec.md` | Pending |
+| **Phase 4** | **API Contract Specification** | `docs/api-contract.md` | **COMPLETE** |
+| **Phase 5** | **AI Subsystem Specification** | `docs/ai-model-spec.md` | **NEXT PHASE** |
 | **Phase 6** | **Frontend UI/UX Specification** | `docs/frontend-spec.md` | Pending |
 | **Phase 7** | **Backend Core Implementation** | `backend/` | Pending |
 | **Phase 8** | **AI Layer Implementation** | `ai-model/` | Pending |

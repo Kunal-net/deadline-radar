@@ -8,9 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Completed comprehensive, versioned REST API Contract Specification (`docs/api-contract.md`) defining endpoint paths, strict request/response Pydantic JSON schemas, Bearer JWT authentication, row-level authorization isolation, offset pagination, multi-attribute filtering, date-time standards, rate limiting, and defensive AI parsing contracts.
 - Completed authoritative Database Schema Specification (`docs/database-schema.md`) establishing PostgreSQL 15+ relational design, normalized organizations and ingestion sources, separate AI metadata extension table, unified user tracking lifecycle entity, UTC timezone invariance, full-text and trigram search strategies, and concrete indexing architectures.
 - Completed comprehensive System Architecture Design (`docs/architecture.md`) defining technical stack selections (FastAPI, PostgreSQL 15+, Vite/React/TS SPA), component boundaries, pluggable AI and ingestion pipelines, in-process async background worker, security models, data flows, and Architectural Decision Records (ADR-001 through ADR-007).
-- Updated development workflow roadmap (`docs/development-workflow.md`) marking database design complete and setting API contract design as the next phase.
+- Updated development workflow roadmap (`docs/development-workflow.md`) marking API contract design complete and transitioning to AI subsystem and frontend specifications.
 - Formalized complete, implementation-ready 32-section Product Requirements Document (`docs/prd.md`) defining target personas, user journeys, MVP scope boundaries, opportunity data model, lifecycle states, in-app notifications, and testable acceptance criteria.
 - Updated project context (`docs/project-context.md`) with confirmed MVP decisions regarding notification channels, AI feature scoping, and lifecycle separation.
 - Initial project directory structure (`frontend/`, `backend/`, `ai-model/`, `docs/`, `.github/`)
