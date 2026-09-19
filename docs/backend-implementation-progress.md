@@ -69,12 +69,37 @@
 ---
 
 ## Phase 03 — Database & Migrations
-- **Status**: Pending
-- **Date**: —
-- **Summary**: —
-- **Files**: —
-- **Tests**: —
-- **Notes**: —
+- **Status**: Completed
+- **Date**: 2026-09-20
+- **Summary**:
+  - Implemented 14 core SQLAlchemy 2.0 declarative database models with UUID v4 primary keys, UTC timestamps, proper indexes, constraints, and cascading foreign keys.
+  - Entities implemented: `User`, `UserPreference`, `UserInterest`, `TimeAvailability`, `ScheduleBlock`, `WorkItem`, `WorkUnit`, `WorkEstimate`, `TimeEntry`, `ActiveSession`, `UserPaceFactor`, `Plan`, `PlanItem`, `Notification`, `AIAnalysis`.
+  - Configured Alembic with async migration support (`alembic.ini`, `alembic/env.py`, `alembic/script.py.mako`).
+  - Generated and executed initial migration revision (`alembic/versions/c014e8a84b43_initial_schema.py`) applying cleanly to database.
+  - Added unit tests validating entity lifecycle, relationships, cascading deletes from WorkItem to WorkUnits, unique active sessions, and plan ordering.
+- **Files**:
+  - `backend/app/models/base.py`
+  - `backend/app/models/user.py`
+  - `backend/app/models/preference.py`
+  - `backend/app/models/interest.py`
+  - `backend/app/models/availability.py`
+  - `backend/app/models/schedule_block.py`
+  - `backend/app/models/work_item.py`
+  - `backend/app/models/work_unit.py`
+  - `backend/app/models/work_estimate.py`
+  - `backend/app/models/time_entry.py`
+  - `backend/app/models/pace_factor.py`
+  - `backend/app/models/plan.py`
+  - `backend/app/models/notification.py`
+  - `backend/app/models/ai_analysis.py`
+  - `backend/app/models/__init__.py`
+  - `backend/alembic.ini`
+  - `backend/alembic/env.py`
+  - `backend/alembic/script.py.mako`
+  - `backend/alembic/versions/c014e8a84b43_initial_schema.py`
+  - `backend/tests/unit/test_database_schema.py`
+- **Tests**: 11 unit tests passing (5 schema relationship & lifecycle tests, 4 security tests, 2 health tests).
+- **Next Phase**: Phase 04 — Domain Models & Repositories.
 
 ---
 
