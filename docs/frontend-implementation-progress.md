@@ -15,8 +15,8 @@ This document tracks the sequential execution of all 20 phases from `deadline_ra
 | **Phase 5** | Today Screen | **Completed** | 2026-09-19 | DailyBriefHero, DayShapePlate (55/45), ActionablePrioritiesList, NaturalScheduleAdjustment |
 | **Phase 6** | Radar Screen | **Completed** | 2026-09-20 | RadarHero, CapacityBalancePlate, ApproachingDeadlinesList, FeasibilityIntake |
 | **Phase 7** | Work | **Completed** | 2026-09-20 | Work workspace, open ledger rows, search/filtering/sorting, natural intake |
-| **Phase 8** | Add Work | **In Progress** | 2026-09-20 | Natural language intake, AI decomposition, extraction, confirmation |
-| **Phase 9** | Work Detail | Pending | — | Detail view, dependencies, schedule, variance analysis |
+| **Phase 8** | Add Work | **Completed** | 2026-09-20 | Natural language intake, AI decomposition, extraction, explicit tags, confirmation |
+| **Phase 9** | Work Detail | **In Progress** | 2026-09-20 | Detail view, dependencies, schedule, variance analysis |
 | **Phase 10** | Planning | Pending | — | Capacity-aware planning, schedule generation, adjustments |
 | **Phase 11** | Timeline / Calendar / Workload / Priorities | Pending | — | Temporal views, capacity envelopes, workload concentration |
 | **Phase 12** | Insights | Pending | — | Estimation variance, velocity, learning, anti-fake stats |
@@ -94,3 +94,26 @@ This document tracks the sequential execution of all 20 phases from `deadline_ra
   - ESLint: 0 warnings
   - Vite build: passed (built in 4.54s)
 - **Next Phase**: Phase 8 — Add Work Screen
+
+---
+
+## Phase 8: Add Work Screen Log
+- **Date**: 2026-09-20
+- **Status**: Completed
+- **Skills Used**: `stitch-design-taste`, `high-end-visual-design`, `impeccable`, `motion`
+- **Files Modified/Created**:
+  - `frontend/src/pages/AddWorkView.tsx`
+- **Stitch MCP Elements Mapped**:
+  - Screen ID: `5e90fce4838c4ba49f31c0f120487a51` ("Add Work — Deadline Radar")
+  - Natural language intake with syntax interpretation indicator
+  - Structural Synthesizer with explicit categorical boundary tags: `[USER INPUT]`, `[AI INTERPRETATION]`, `[SYSTEM DATA]`
+  - Real-time decomposition tab breaking deliverables into structured cognitive chunks with interactive duration units
+  - Missing-information detection (missing deadline, unspecified effort)
+  - Capacity audit with focus window matching and contingency margin visual bar
+  - Canonical Imagery Plate (`/assets/addwork-hands.jpg`) with Figure 06.1 caption
+  - Audit Trail of recent commitments parsed & Week 42 Saturation widget
+- **Validation Performed**:
+  - TypeScript `tsc --noEmit`: 0 errors
+  - ESLint: 0 warnings
+  - Vite build: passed (built in 3.40s)
+- **Next Phase**: Phase 9 — Work Detail Screen
