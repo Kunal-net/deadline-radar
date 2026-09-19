@@ -35,7 +35,7 @@ export const MetricBlock: React.FC<MetricBlockProps> = ({
       )}
     >
       <div className="flex items-center justify-between gap-space-xs">
-        <span className="font-label-md text-label-md text-ink-muted uppercase tracking-widest">
+        <span className="font-label-md text-label-md text-ink-muted font-medium">
           {label}
         </span>
         {icon && <span className="text-ink-secondary">{icon}</span>}

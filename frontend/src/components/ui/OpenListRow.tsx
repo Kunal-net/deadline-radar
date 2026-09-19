@@ -16,14 +16,24 @@ export const OpenListRow: React.FC<OpenListRowProps> = ({
   rightContent,
   onClick,
 }) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (onClick && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
+      onClick();
+    }
+  };
+
   return (
     <div
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
       onClick={onClick}
+      onKeyDown={handleKeyDown}
       className={clsx(
         'group py-space-md lg:py-space-lg px-space-xs lg:px-space-md -mx-space-xs lg:-mx-space-md',
-        'transition-colors duration-200 hover:bg-surface-cream',
+        'transition-colors duration-200 hover:bg-surface-cream rounded-none',
         'grid grid-cols-1 lg:grid-cols-12 gap-space-sm items-baseline',
-        onClick && 'cursor-pointer',
+        onClick && 'cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-ink-primary',
         className
       )}
     >

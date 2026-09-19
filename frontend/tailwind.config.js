@@ -73,7 +73,7 @@ export default {
         lg: "0px",
         xl: "0px",
         "2xl": "0px",
-        full: "9999px",
+        full: "0px",
       },
       spacing: {
         "margin-mobile": "1.25rem",

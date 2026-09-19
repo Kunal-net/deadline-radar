@@ -2,16 +2,48 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* Stitch Design System - Project 17354903279475530867 */
+  --color-canvas: #F7F5F0;
+  --color-canvas-paper: #F7F5F0;
+  --color-surface: #FBF9F4;
+  --color-surface-cream: #EFECE4;
+  --color-surface-tint: #E5E1D6;
+  --color-surface-variant: #E4E2DD;
+  --color-surface-dim: #DBDAD5;
+  --color-surface-container-lowest: #FFFFFF;
+  --color-surface-container-low: #F5F3EE;
+  --color-surface-container: #F0EEE9;
+  --color-surface-container-high: #EAE8E3;
+  --color-surface-container-highest: #E4E2DD;
+
+  --color-ink-primary: #1A1715;
+  --color-ink-secondary: #57524D;
+  --color-ink-muted: #8C827A;
+
+  --color-accent-terracotta: #C85A32;
+  --color-status-warning: #B85324;
+  --color-status-alert: #A63224;
+  --color-border-hairline: rgba(26, 23, 21, 0.12);
+
+  --font-epilogue: 'Epilogue', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-manrope: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  --border-radius-base: 0px;
+}
+
 @layer base {
   html, body {
     margin: 0;
     padding: 0;
     background-color: #fbf9f4;
-    color: #1b1c19;
+    color: #1a1715;
   }
   body {
     overscroll-behavior: none;
-    font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: var(--font-manrope);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   main > :first-child {
     margin-top: 0 !important;
@@ -19,9 +51,20 @@
   main > :last-child {
     margin-bottom: 0 !important;
   }
+
+  /* Keyboard focus rings conforming to sharp editorial language */
+  :focus-visible {
+    outline: 1px solid #1a1715;
+    outline-offset: 2px;
+  }
+
+  /* Sharp 0px corners universally */
+  *, *::before, *::after {
+    border-radius: 0px !important;
+  }
 }
 
-/* Material Symbols standard config */
+/* Material Symbols standard configuration */
 .material-symbols-outlined {
   font-family: 'Material Symbols Outlined';
   font-weight: normal;
@@ -45,4 +88,16 @@
 * {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Motion: Respect reduced-motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

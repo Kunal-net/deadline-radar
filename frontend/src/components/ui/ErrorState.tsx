@@ -25,8 +25,8 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
       )}
     >
       <div className="flex items-center gap-space-xs">
-        <span className="w-2 h-2 bg-status-alert inline-block" />
-        <h4 className="font-label-lg text-label-lg font-semibold uppercase tracking-wider text-status-alert">
+        <span className="w-1.5 h-1.5 bg-status-alert inline-block shrink-0" />
+        <h4 className="font-label-lg text-label-lg font-semibold text-status-alert">
           {title}
         </h4>
       </div>

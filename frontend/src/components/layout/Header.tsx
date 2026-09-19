@@ -8,7 +8,7 @@ export const Header: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-surface/95 backdrop-blur-md border-b border-border-hairline">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-surface border-b border-border-hairline">
       <div className="h-20 w-full px-margin-mobile md:px-margin-tablet lg:px-margin flex items-center justify-between gap-gutter">
         {/* Brand Anchor */}
         <div className="flex items-center gap-space-sm shrink-0">
@@ -40,12 +40,12 @@ export const Header: React.FC = () => {
           <Link
             to="/settings"
             aria-label="User Preferences & Settings"
-            className="shrink-0 focus:outline-none focus:ring-1 focus:ring-ink-primary"
+            className="shrink-0 focus:outline-none focus-visible:ring-1 focus-visible:ring-ink-primary"
           >
             <img
               src="/assets/user-avatar.jpg"
               alt="User Profile"
-              className="w-8 h-8 rounded-full object-cover ring-1 ring-border-hairline"
+              className="w-8 h-8 rounded-none object-cover border border-border-hairline"
             />
           </Link>
 
@@ -53,7 +53,9 @@ export const Header: React.FC = () => {
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="Toggle Navigation"
-            className="md:hidden p-1 text-ink-primary hover:text-accent-terracotta focus:outline-none"
+            aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-navigation"
+            className="md:hidden p-1 text-ink-primary hover:text-accent-terracotta focus:outline-none focus-visible:ring-1 focus-visible:ring-ink-primary"
           >
             <span className="material-symbols-outlined text-[24px]">
               {mobileMenuOpen ? 'close' : 'menu'}
@@ -64,7 +66,10 @@ export const Header: React.FC = () => {
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-border-hairline bg-surface px-margin-mobile py-space-md flex flex-col gap-space-sm shadow-sm">
+        <div
+          id="mobile-navigation"
+          className="md:hidden border-t border-border-hairline bg-surface px-margin-mobile py-space-md flex flex-col gap-space-sm"
+        >
           <Navigation
             className="flex-col items-start gap-space-xs"
             onItemClick={() => setMobileMenuOpen(false)}

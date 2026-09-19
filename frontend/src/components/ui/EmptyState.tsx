@@ -20,12 +20,12 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   return (
     <div
       className={clsx(
-        'w-full py-space-xl px-space-md border-t border-b border-border-hairline bg-surface-container-low/40',
-        'flex flex-col items-start gap-space-sm',
+        'w-full py-space-xl px-space-md border-t border-b border-border-hairline bg-surface-container-low',
+        'flex flex-col items-start gap-space-sm rounded-none',
         className
       )}
     >
-      <span className="font-label-md text-label-md uppercase tracking-wider text-ink-muted">
+      <span className="font-label-md text-label-md font-medium text-ink-muted">
         Zero Active Commitments
       </span>
       <h3 className="font-headline-lg text-headline-lg text-ink-primary">
