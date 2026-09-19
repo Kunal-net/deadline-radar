@@ -172,3 +172,51 @@ async def test_ai_decomposition_endpoints_and_confirmation_flow(
     assert len(updated_item["units"]) == len(item_dec["suggested_units"])
     assert updated_item["remaining_estimated_hours"] > 0
 
+
+@pytest.mark.asyncio
+async def test_ai_effort_estimation_cold_start(client: AsyncClient, auth_headers: dict):
+    # Cold start: no completed history
+    res = await client.post(
+        "/api/v1/ai/estimate-effort",
+        json={
+            "title": "Study Discrete Mathematics Graphs chapter",
+            "category": "academic",
+            "complexity": "moderate",
+        },
+        headers=auth_headers,
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["baseline_estimated_hours"] > 0
+    assert data["adjusted_estimated_hours"] == data["baseline_estimated_hours"]
+    assert data["is_personalized"] is False
+    assert data["user_pace_factor"] == 1.0
+    assert data["is_guarantee"] is False
+    assert "–" in data["likely_range"] or "-" in data["likely_range"]
+    assert any("cold-start" in f.lower() or "insufficient" in f.lower() for f in data["major_factors"])
+
+
+@pytest.mark.asyncio
+async def test_ai_effort_estimation_personalized(client: AsyncClient, auth_headers: dict):
+    # Personalized: user with historical pace factor and past observations
+    res = await client.post(
+        "/api/v1/ai/estimate-effort",
+        json={
+            "title": "Build Distributed Key-Value Store",
+            "category": "project",
+            "complexity": "complex",
+            "user_pace_factor": 1.25,
+            "historical_observations_count": 6,
+        },
+        headers=auth_headers,
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["is_personalized"] is True
+    assert data["user_pace_factor"] == 1.25
+    assert data["adjusted_estimated_hours"] > data["baseline_estimated_hours"]
+    assert data["confidence_level"] == "high"
+    assert data["is_guarantee"] is False
+    assert any("1.25" in f for f in data["major_factors"])
+
+

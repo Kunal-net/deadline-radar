@@ -2,9 +2,9 @@
 
 ## Overall Status
 
-- **Current Phase**: Phase 14 Completed — Transitioning to Phase 15
-- **Completed Phases**: Phase 01 to Phase 14
-- **Remaining Phases**: Phase 15 to Phase 20
+- **Current Phase**: Phase 15 Completed — Transitioning to Phase 16
+- **Completed Phases**: Phase 01 to Phase 15
+- **Remaining Phases**: Phase 16 to Phase 20
 - **Overall Status**: In Progress (Autonomous Execution Active)
 
 ---
@@ -390,12 +390,23 @@
 ---
 
 ## Phase 15 — AI Effort Estimation
-- **Status**: Pending
-- **Date**: —
-- **Summary**: —
-- **Files**: —
-- **Tests**: —
-- **Notes**: —
+- **Status**: Completed
+- **Date**: 2026-09-20
+- **Summary**:
+  - Implemented AI-assisted probabilistic effort estimation endpoint `POST /api/v1/ai/estimate-effort`.
+  - Calculates nominal baseline hours, min/max expected ranges, likely range strings (e.g. "2.5h – 4.0h"), and confidence levels ("low", "medium", "high").
+  - Enforced cold-start protection: users with fewer than 3 completed observations receive generalized domain baseline estimates without aggressive personalization.
+  - Dynamically queries category-specific historical pace factors and completed observation counts for experienced users, scaling predictions with transparent factor disclosure.
+  - Transparently returns major contributing factors, estimation source, model/version metadata, and explicit `is_guarantee: False` disclosure ensuring users know predictions are probabilistic.
+  - Added unit and integration tests verifying cold-start fallback, personalized pace adjustment, and non-guarantee disclosures.
+- **Files**:
+  - `backend/app/services/ai/schemas.py`
+  - `backend/app/services/ai/provider.py`
+  - `backend/app/services/ai/effort_estimator.py`
+  - `backend/app/api/v1/endpoints/ai.py`
+  - `backend/tests/integration/test_ai_endpoints.py`
+- **Tests**: 8 integration tests passing in `test_ai_endpoints.py`. Total 55 tests passing across backend suite.
+- **Next Phase**: Phase 16 — Personalization / Learning.
 
 ---
 

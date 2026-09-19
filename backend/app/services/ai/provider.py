@@ -248,18 +248,56 @@ class MockAIProvider(BaseAIProvider):
             baseline = round((baseline + unit_based) / 2.0, 1)
 
         baseline = round(baseline, 1)
-        min_hours = max(0.5, round(baseline * 0.75, 1))
-        max_hours = round(baseline * 1.4, 1)
+
+        # Check for personalization based on sufficient observations
+        has_sufficient_data = (request.historical_observations_count or 0) >= 3
+        is_personalized = bool(has_sufficient_data and request.user_pace_factor and request.user_pace_factor > 0)
+        pace = request.user_pace_factor if is_personalized else 1.0
+        adjusted = round(baseline * pace, 1)
+
+        major_factors = [
+            f"{complexity.capitalize()} complexity tier calibrated for {cat} domain.",
+        ]
+        if request.units_count and request.units_count > 0:
+            major_factors.append(f"Subtask structure of {request.units_count} discrete units considered.")
+
+        if is_personalized:
+            major_factors.append(
+                f"Historical pace factor of {pace:.2f}x applied based on {request.historical_observations_count} completed observations."
+            )
+        else:
+            major_factors.append(
+                "Cold-start / insufficient historical observations for personalization; generalized domain baseline applied."
+            )
+
+        min_hours = max(0.5, round(adjusted * 0.75, 1))
+        max_hours = round(adjusted * 1.35, 1)
+        likely_range = f"{min_hours:.1f}h – {max_hours:.1f}h"
+
+        confidence_score = 0.86 if is_personalized else 0.76
+        confidence_level = "high" if confidence_score >= 0.85 else "medium"
+
+        explanation = (
+            f"Nominal estimate of {adjusted:.1f}h (likely range {likely_range}, confidence: {confidence_level}). "
+            f"Predictions are probabilistic estimates, not guarantees."
+        )
 
         return EffortEstimationResponse(
-            baseline_hours=baseline,
+            baseline_estimated_hours=baseline,
+            user_pace_factor=round(pace, 2),
+            adjusted_estimated_hours=adjusted,
             min_expected_hours=min_hours,
             max_expected_hours=max_hours,
-            confidence_score=0.82,
-            estimation_rationale=(
-                f"Calibrated estimate for {complexity} {cat} task: "
-                f"expected range between {min_hours}h and {max_hours}h (nominal baseline: {baseline}h)."
-            ),
+            likely_range=likely_range,
+            confidence_score=confidence_score,
+            confidence_level=confidence_level,
+            major_factors=major_factors,
+            estimation_source="hybrid_heuristic_calibrated",
+            model_metadata="DeadlineRadar-Estimator-v1.0",
+            estimation_rationale=f"Calibrated estimate for {complexity} {cat} task: {likely_range}.",
+            explanation=explanation,
+            is_personalized=is_personalized,
+            is_guarantee=False,
         )
 
     async def explain_risk_and_priority(self, request: ExplanationRequest) -> ExplanationResponse:

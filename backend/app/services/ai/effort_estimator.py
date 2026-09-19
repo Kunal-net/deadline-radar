@@ -14,12 +14,18 @@ class EffortEstimator:
         title: str,
         category: str = "academic",
         complexity: str = "moderate",
+        description: Optional[str] = None,
         units_count: Optional[int] = None,
+        user_pace_factor: Optional[float] = None,
+        historical_observations_count: Optional[int] = 0,
     ) -> EffortEstimationResponse:
         req = EffortEstimationRequest(
             title=title,
             category=category,
             complexity=complexity,
+            description=description,
             units_count=units_count,
+            user_pace_factor=user_pace_factor,
+            historical_observations_count=historical_observations_count,
         )
         return await self.provider.estimate_effort(req)

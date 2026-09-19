@@ -14,10 +14,13 @@ from app.services.ai.schemas import (
     ApplyDecompositionRequest,
     DecompositionRequest,
     DecompositionResponse,
+    EffortEstimationRequest,
+    EffortEstimationResponse,
     WorkInterpretationRequest,
     WorkInterpretationResponse,
 )
 from app.services.work_service import WorkService
+from app.repositories.work_repo import WorkItemRepository
 
 logger = logging.getLogger(__name__)
 
@@ -141,3 +144,62 @@ async def apply_decomposition(
         await work_service.add_unit(work_id, current_user.id, unit_req)
 
     return await work_service.get_work_item(work_id, current_user.id)
+
+
+@router.post(
+    "/estimate-effort",
+    response_model=EffortEstimationResponse,
+    status_code=status.HTTP_200_OK,
+    summary="AI-Assisted Effort Estimation",
+    description=(
+        "Produces calibrated probabilistic effort estimates with confidence intervals, "
+        "incorporating complexity, work category, and personal historical pace factor when sufficient observations exist."
+    ),
+)
+async def estimate_work_effort(
+    payload: EffortEstimationRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    ai_service: AIService = Depends(get_ai_service),
+) -> EffortEstimationResponse:
+    # Query user's pace factor record and completed history
+    work_repo = WorkItemRepository(db)
+    _, total_completed = await work_repo.list_work_items(user_id=current_user.id, status="completed", limit=1)
+    obs_count = total_completed
+
+    from app.models.pace_factor import UserPaceFactor
+    from sqlalchemy import select
+    stmt = select(UserPaceFactor).where(
+        UserPaceFactor.user_id == current_user.id,
+        UserPaceFactor.category == payload.category,
+    )
+    pace_res = await db.execute(stmt)
+    user_pace_rec = pace_res.scalar_one_or_none()
+
+    pace_factor = 1.0
+    if user_pace_rec and user_pace_rec.sample_count >= 3:
+        pace_factor = user_pace_rec.pace_factor
+        obs_count = max(obs_count, user_pace_rec.sample_count)
+
+    if payload.user_pace_factor is not None:
+        pace_factor = payload.user_pace_factor
+    if payload.historical_observations_count and payload.historical_observations_count > obs_count:
+        obs_count = payload.historical_observations_count
+
+    logger.info(
+        "Estimating effort for '%s' (user_id=%s, obs_count=%d, pace_factor=%.2f)",
+        payload.title,
+        current_user.id,
+        obs_count,
+        pace_factor,
+    )
+
+    return await ai_service.effort_estimator.estimate(
+        title=payload.title,
+        category=payload.category,
+        complexity=payload.complexity or "moderate",
+        description=payload.description,
+        units_count=payload.units_count,
+        user_pace_factor=pace_factor,
+        historical_observations_count=obs_count,
+    )

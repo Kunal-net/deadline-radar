@@ -71,17 +71,34 @@ class ApplyDecompositionRequest(BaseModel):
 
 class EffortEstimationRequest(BaseModel):
     title: str = Field(..., min_length=2, max_length=255)
+    description: Optional[str] = None
     category: str = "academic"
     complexity: Optional[str] = "moderate"  # simple, moderate, complex, massive
     units_count: Optional[int] = None
+    user_pace_factor: Optional[float] = None
+    historical_observations_count: Optional[int] = 0
 
 
 class EffortEstimationResponse(BaseModel):
-    baseline_hours: float
+    baseline_estimated_hours: float
+    user_pace_factor: float = 1.0
+    adjusted_estimated_hours: float
     min_expected_hours: float
     max_expected_hours: float
+    likely_range: str
     confidence_score: float = 0.80
+    confidence_level: str = "medium"  # low, medium, high
+    major_factors: List[str] = []
+    estimation_source: str = "hybrid_heuristic_calibrated"
+    model_metadata: str = "DeadlineRadar-Estimator-v1.0"
     estimation_rationale: str
+    explanation: str
+    is_personalized: bool = False
+    is_guarantee: bool = False
+
+    @property
+    def baseline_hours(self) -> float:
+        return self.baseline_estimated_hours
 
 
 class ExplanationRequest(BaseModel):
