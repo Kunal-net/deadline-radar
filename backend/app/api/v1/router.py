@@ -5,6 +5,7 @@ from app.api.v1.endpoints import (
     auth,
     availability,
     health,
+    notifications,
     planning,
     today,
     tracking,
@@ -21,3 +22,4 @@ api_router.include_router(availability.router, prefix="/availability", tags=["Ti
 api_router.include_router(tracking.router, prefix="/tracking", tags=["Time Tracking"])
 api_router.include_router(planning.router, tags=["Planning"])
 api_router.include_router(today.router, tags=["Today Execution"])
+api_router.include_router(notifications.router, tags=["Notifications"])

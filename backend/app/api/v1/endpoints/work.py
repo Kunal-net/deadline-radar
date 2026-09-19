@@ -190,3 +190,16 @@ async def reorder_work_units(
     service = WorkService(db)
     units = await service.reorder_units(work_id, current_user.id, req)
     return WorkUnitsListResponse(units=units)
+
+
+@router.post(
+    "/recalculate",
+    summary="Trigger deterministic workload recalculation, risk transitions, and notification dispatch",
+)
+async def recalculate_workload(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from app.services.background_recalculation import BackgroundRecalculationService
+    service = BackgroundRecalculationService(db)
+    return await service.recalculate_user_workload(current_user.id)

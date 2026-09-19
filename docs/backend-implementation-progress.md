@@ -2,9 +2,9 @@
 
 ## Overall Status
 
-- **Current Phase**: Phase 10 Completed — Transitioning to Phase 11
-- **Completed Phases**: Phase 01 to Phase 10
-- **Remaining Phases**: Phase 11 to Phase 20
+- **Current Phase**: Phase 11 Completed — Transitioning to Phase 12
+- **Completed Phases**: Phase 01 to Phase 11
+- **Remaining Phases**: Phase 12 to Phase 20
 - **Overall Status**: In Progress (Autonomous Execution Active)
 
 ---
@@ -282,12 +282,29 @@
 ---
 
 ## Phase 11 — Background Jobs & Recalculation
-- **Status**: Pending
-- **Date**: —
-- **Summary**: —
-- **Files**: —
-- **Tests**: —
-- **Notes**: —
+- **Status**: Completed
+- **Date**: 2026-09-20
+- **Summary**:
+  - Implemented `BackgroundRecalculationService` in `backend/app/services/background_recalculation.py` providing idempotent, retry-safe, bounded, and logged workload processing.
+  - Recalculates deadline risk ratios and dynamic priority scores across all active user work items against live availability templates and blackout commitments.
+  - Detects escalating risk transitions and dispatches deduplicated `Notification` alerts for items entering AT_RISK, CRITICAL, or OVERDUE states.
+  - Detects and automatically terminates stale active timer sessions running beyond 12 hours, logging capped 4-hour `TimeEntry` records.
+  - Implemented `NotificationService` in `backend/app/services/notification_service.py` managing user notifications and unread badges.
+  - Exposed REST endpoints:
+    - `POST /api/v1/work/recalculate`: Triggers deterministic workload recalculation and returns metrics summary
+    - `GET /api/v1/notifications`: Lists user notifications with filter ('all', 'unread', 'read') and unread count
+    - `PATCH /api/v1/notifications/{id}/read`: Marks single notification as read
+    - `POST /api/v1/notifications/mark-all-read`: Marks all pending notifications as read
+- **Files**:
+  - `backend/app/schemas/notification.py`
+  - `backend/app/services/background_recalculation.py`
+  - `backend/app/services/notification_service.py`
+  - `backend/app/api/v1/endpoints/notifications.py`
+  - `backend/app/api/v1/endpoints/work.py`
+  - `backend/app/api/v1/router.py`
+  - `backend/tests/integration/test_recalculation_and_notifications.py`
+- **Tests**: 1 integration test passing covering recalculation trigger, proactive risk notification generation, and read status management. Total 41 tests passing across backend.
+- **Next Phase**: Phase 12 — AI Infrastructure.
 
 ---
 
