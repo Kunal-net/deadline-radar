@@ -36,12 +36,35 @@
 ---
 
 ## Phase 02 — Backend Foundation
-- **Status**: Pending
-- **Date**: —
-- **Summary**: —
-- **Files**: —
-- **Tests**: —
-- **Notes**: —
+- **Status**: Completed
+- **Date**: 2026-09-20
+- **Summary**:
+  - Initialized Python backend project structure, `pyproject.toml`, and `requirements.txt`.
+  - Configured Pydantic v2 Settings (`app/core/config.py`) for environment management, CORS, JWT secrets, and database URL.
+  - Implemented async database connection and session management (`app/core/database.py`) supporting async SQLite and PostgreSQL.
+  - Implemented RFC 7807 problem details error handling with consistent JSON envelopes (`app/core/errors.py`).
+  - Implemented direct `bcrypt` password hashing and JWT encoding/decoding (`app/core/security.py`).
+  - Implemented structured logging (`app/core/logging.py`).
+  - Built FastAPI application factory with lifespan hooks, CORS middleware, error handlers, and `/health` + `/api/v1/health` endpoints (`app/main.py`).
+  - Configured pytest with in-memory async SQLite fixtures (`tests/conftest.py`).
+- **Files**:
+  - `backend/pyproject.toml`
+  - `backend/requirements.txt`
+  - `backend/app/core/config.py`
+  - `backend/app/core/database.py`
+  - `backend/app/core/errors.py`
+  - `backend/app/core/logging.py`
+  - `backend/app/core/security.py`
+  - `backend/app/schemas/common.py`
+  - `backend/app/api/v1/endpoints/health.py`
+  - `backend/app/api/v1/router.py`
+  - `backend/app/main.py`
+  - `backend/tests/conftest.py`
+  - `backend/tests/unit/test_health.py`
+  - `backend/tests/unit/test_errors_and_security.py`
+- **Tests**: 6 unit tests passing (health checks, password hashing, JWT generation/decoding, error envelopes).
+- **Notes**: Replaced legacy passlib bcrypt backend with native `bcrypt` library to ensure compatibility with modern python-bcrypt.
+- **Next Phase**: Phase 03 — Database & Migrations.
 
 ---
 
