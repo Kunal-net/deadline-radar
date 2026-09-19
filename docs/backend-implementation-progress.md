@@ -2,9 +2,9 @@
 
 ## Overall Status
 
-- **Current Phase**: Phase 08 Completed — Transitioning to Phase 09
-- **Completed Phases**: Phase 01 to Phase 08
-- **Remaining Phases**: Phase 09 to Phase 20
+- **Current Phase**: Phase 09 Completed — Transitioning to Phase 10
+- **Completed Phases**: Phase 01 to Phase 09
+- **Remaining Phases**: Phase 10 to Phase 20
 - **Overall Status**: In Progress (Autonomous Execution Active)
 
 ---
@@ -229,12 +229,25 @@
 ---
 
 ## Phase 09 — Priority Engine
-- **Status**: Pending
-- **Date**: —
-- **Summary**: —
-- **Files**: —
-- **Tests**: —
-- **Notes**: —
+- **Status**: Completed
+- **Date**: 2026-09-20
+- **Summary**:
+  - Implemented deterministic `PriorityEngine` in `backend/app/domain/priority_engine.py` complying strictly with Rule #3 (no LLMs in numerical priority calculations).
+  - Multi-factor dynamic score calculation ($S \in [0.00, 100.00]$):
+    - Deadline Proximity Urgency ($0 - 35$ pts) with exponential/linear decay and hard cutoff bonus
+    - Deadline Risk / Capacity Deficit ($0 - 30$ pts) directly factoring RiskEngine output
+    - User-Defined Importance Weight ($0 - 20$ pts)
+    - Workload / Effort Magnitude ($0 - 10$ pts)
+    - Readiness / Momentum Modifiers ($-20$ pts for blocked items, $+4$ pts finish-line boost, $+2$ pts per unblocked item)
+  - Provides deterministic multi-item rank ordering (`PriorityEngine.rank_items`) by `(priority_score DESC, deadline ASC, remaining_hours DESC)`.
+  - Generates transparent, human-readable explanations citing specific score drivers.
+  - Fully integrated into `WorkService._recalculate_item_metrics` to maintain live priority scores across CRUD operations.
+- **Files**:
+  - `backend/app/domain/priority_engine.py`
+  - `backend/app/services/work_service.py`
+  - `backend/tests/unit/test_priority_engine.py`
+- **Tests**: 6 unit tests passing across all priority tiers, overdue states, blocked modifiers, finish-line boosts, and deterministic sorting. Total 35 tests passing.
+- **Next Phase**: Phase 10 — Planning & Scheduling Engine.
 
 ---
 

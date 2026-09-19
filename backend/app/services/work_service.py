@@ -10,6 +10,7 @@ from app.models.work_item import WorkItem
 from app.models.work_unit import WorkUnit
 from app.repositories.work_repo import WorkItemRepository
 from app.schemas.common import PaginatedResponse
+from app.domain.priority_engine import PriorityEngine, WorkItemPriorityInput
 from app.schemas.work import (
     UnitReorderRequest,
     WorkItemCreateRequest,
@@ -105,8 +106,6 @@ class WorkService:
             if time_to_deadline <= 0:
                 item.risk_state = "overdue"
                 item.risk_ratio = 9.99
-                item.dynamic_priority = 100.0
-                item.priority_explanation = "Deadline has passed with remaining work."
             else:
                 # Rough baseline capacity: assume ~4h available per 24h day
                 days = max(time_to_deadline / 24.0, 0.1)
@@ -122,22 +121,26 @@ class WorkService:
                     item.risk_state = "watch"
                 else:
                     item.risk_state = "safe"
-
-                # Dynamic priority calculation
-                urgency_score = max(0.0, 100.0 - (days * 10.0))
-                priority = min(
-                    100.0,
-                    round((urgency_score * 0.5) + (min(ratio, 2.0) * 20.0 * item.importance_weight), 1),
-                )
-                item.dynamic_priority = priority
-                item.priority_explanation = (
-                    f"{item.remaining_estimated_hours}h remaining with estimated {rough_capacity:.1f}h capacity before deadline."
-                )
         else:
             item.risk_state = "safe"
             item.risk_ratio = 0.0
-            item.dynamic_priority = round(30.0 * item.importance_weight, 1)
-            item.priority_explanation = "No hard deadline specified."
+
+        # Execute deterministic PriorityEngine
+        priority_input = WorkItemPriorityInput(
+            item_id=item.id,
+            title=item.title,
+            status=item.status,
+            deadline_utc=item.deadline_utc,
+            remaining_hours=item.remaining_estimated_hours,
+            importance_weight=item.importance_weight,
+            risk_state=item.risk_state,
+            risk_ratio=item.risk_ratio,
+            is_hard_deadline=item.is_hard_deadline,
+            completion_pct=item.completion_pct,
+        )
+        priority_eval = PriorityEngine.evaluate(priority_input, current_time=now)
+        item.dynamic_priority = priority_eval.priority_score
+        item.priority_explanation = priority_eval.priority_explanation
 
     async def list_work_items(
         self,
