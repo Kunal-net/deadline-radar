@@ -181,12 +181,26 @@
 ---
 
 ## Phase 07 — Time Availability & Tracking
-- **Status**: Pending
-- **Date**: —
-- **Summary**: —
-- **Files**: —
-- **Tests**: —
-- **Notes**: —
+- **Status**: Completed
+- **Date**: 2026-09-20
+- **Summary**:
+  - Implemented 7-day recurring weekly availability templates API (`GET/PUT /api/v1/availability/templates`).
+  - Implemented schedule commitment and blackout blocks API (`GET/POST /api/v1/availability/blocks`, `DELETE /api/v1/availability/blocks/{id}`).
+  - Built real-time stopwatch session management (`POST /api/v1/tracking/sessions/start`, `GET /api/v1/tracking/sessions/active`, `POST /api/v1/tracking/sessions/stop`) enforcing one active timer per user with 409 Conflict rejection.
+  - Implemented automatic calculation of duration, logging of `TimeEntry`, deduction of work item remaining effort, and accumulation of actual logged hours upon stopwatch stop.
+  - Built manual time logging API (`POST /api/v1/tracking/entries`, `GET /api/v1/tracking/entries`) supporting offline work logging and paginated history queries.
+  - Added integration tests verifying availability template replacement, blackout block creation, single active session enforcement, stopwatch stop duration calculation, and cross-user session isolation.
+- **Files**:
+  - `backend/app/schemas/availability.py`
+  - `backend/app/schemas/tracking.py`
+  - `backend/app/services/availability_service.py`
+  - `backend/app/services/tracking_service.py`
+  - `backend/app/api/v1/endpoints/availability.py`
+  - `backend/app/api/v1/endpoints/tracking.py`
+  - `backend/app/api/v1/router.py`
+  - `backend/tests/integration/test_availability_and_tracking.py`
+- **Tests**: 20 tests passing across unit and integration suites.
+- **Next Phase**: Phase 08 — Deterministic Deadline Risk Engine.
 
 ---
 
