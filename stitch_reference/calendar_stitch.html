@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_standard" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Epilogue:ital,wght@0,400;0,500;0,600;0,700;1,400&amp;family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "surface-dim": "#dbdad5", "surface-container": "#f0eee9", "tertiary-fixed-dim": "#d0c4bb", "surface-container-low": "#f5f3ee", "on-tertiary-fixed": "#201a15", "primary-fixed": "#e9e1dd", "on-surface-variant": "#4d4540", "on-secondary": "#ffffff", "accent-terracotta": "#C85A32", "outline": "#7e7570", "secondary-fixed": "#ffdbcf", "ink-primary": "#1A1715", "primary-container": "#1e1b19", "secondary-fixed-dim": "#ffb59c", "primary-fixed-dim": "#ccc5c1", "on-surface": "#1b1c19", "on-secondary-fixed-variant": "#822801", "surface-container-high": "#eae8e3", "on-tertiary-fixed-variant": "#4d453f", "on-primary": "#ffffff", "on-primary-fixed-variant": "#4a4643", "surface-cream": "#EFECE4", "primary": "#000000", "inverse-primary": "#ccc5c1", "tertiary": "#000000", "on-primary-fixed": "#1e1b19", "ink-secondary": "#57524D", "on-error": "#ffffff", "on-tertiary": "#ffffff", "canvas-paper": "#F7F5F0", "background": "#fbf9f4", "secondary": "#a23e18", "surface-bright": "#fbf9f4", "on-secondary-container": "#6f2000", "on-primary-container": "#888380", "error": "#ba1a1a", "on-background": "#1b1c19", "surface-variant": "#e4e2dd", "border-hairline": "rgba(26, 23, 21, 0.12)", "surface": "#fbf9f4", "surface-container-lowest": "#ffffff", "inverse-on-surface": "#f2f1ec", "inverse-surface": "#30312e", "surface-tint": "#E5E1D6", "secondary-container": "#fe8357", "outline-variant": "#d0c4be", "surface-container-highest": "#e4e2dd", "tertiary-fixed": "#ede0d7", "status-alert": "#A63224", "error-container": "#ffdad6", "on-error-container": "#93000a", "on-tertiary-container": "#8c827a", "on-secondary-fixed": "#390c00", "ink-muted": "#8C827A", "tertiary-container": "#201a15", "status-warning": "#B85324" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "margin-mobile": "1.25rem", "margin-tablet": "2rem", "space-xl": "4.5rem", "gutter-mobile": "1rem", "gutter": "2.5rem", "space-sm": "0.75rem", "space-2xl": "7rem", "space-lg": "2.5rem", "space-xs": "0.5rem", "margin": "4rem", "space-md": "1.5rem" }, "fontFamily": { "numeric-hero-mobile": [ "Epilogue" ], "headline-xl": [ "Epilogue" ], "body-lg": [ "Manrope" ], "headline-md": [ "Epilogue" ], "body-xl": [ "Manrope" ], "body-md": [ "Manrope" ], "label-md": [ "Manrope" ], "display-hero-mobile": [ "Epilogue" ], "label-lg": [ "Manrope" ], "numeric-hero": [ "Epilogue" ], "headline-xl-mobile": [ "Epilogue" ], "display-hero": [ "Epilogue" ], "headline-lg": [ "Epilogue" ] }, "fontSize": { "numeric-hero-mobile": [ "48px", { "lineHeight": "48px", "letterSpacing": "-0.03em", "fontWeight": "500" } ], "headline-xl": [ "40px", { "lineHeight": "48px", "letterSpacing": "-0.025em", "fontWeight": "600" } ], "body-lg": [ "17px", { "lineHeight": "28px", "fontWeight": "400" } ], "headline-md": [ "22px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "600" } ], "body-xl": [ "20px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "400" } ], "body-md": [ "15px", { "lineHeight": "24px", "fontWeight": "400" } ], "label-md": [ "12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500" } ], "display-hero-mobile": [ "36px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "600" } ], "label-lg": [ "14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600" } ], "numeric-hero": [ "72px", { "lineHeight": "72px", "letterSpacing": "-0.04em", "fontWeight": "500" } ], "headline-xl-mobile": [ "28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "600" } ], "display-hero": [ "56px", { "lineHeight": "64px", "letterSpacing": "-0.03em", "fontWeight": "600" } ], "headline-lg": [ "28px", { "lineHeight": "36px", "letterSpacing": "-0.015em", "fontWeight": "600" } ] } } } };</script></head><body class="bg-surface font-body-md text-on-surface antialiased selection:bg-surface-tint selection:text-ink-primary"><header class="fixed top-0 left-0 right-0 z-50 bg-surface/90 backdrop-blur-md shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-20 w-full px-margin-mobile md:px-margin-tablet lg:px-margin flex items-center justify-between gap-gutter"><div class="flex items-center gap-space-sm shrink-0"><a class="flex items-center gap-space-sm" data-path="today" href="#"><img alt="Deadline Radar Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1WaxF4Mw-h0prebZo0uEPlYOSxBEKQKe1ZiLqncQ49UGlmHrZ-3xNE0E-eRlUxUHC5MZ6_4K-8f3jJNCb-nNugqei67_vDUkhgpWr_Q4nQUY2GXcKU0U5rLqcNANUtu5NGspvmOs6644b_4jZqFIuj-D23-BcxtgbPI-6HWZnvc-d2kDH_QbvPvSJ103IyT2Rn2-p7fAo5iFLzLHkclK-__ZRHu3yK8aSk7ShtC3S5nfpbcHgV_il8SbG_-"/><span class="font-headline-md text-headline-md tracking-tight text-ink-primary hidden sm:inline">Deadline Radar</span></a></div><nav class="hidden md:flex items-center gap-space-md lg:gap-space-lg" data-active-classes="bg-surface-cream text-ink-primary font-label-lg text-label-lg px-space-sm py-space-xs rounded"><a class="font-label-lg text-label-lg text-ink-secondary hover:text-ink-primary transition-colors duration-150" data-path="today" href="#">Today</a><a class="font-label-lg text-label-lg text-ink-secondary hover:text-ink-primary transition-colors duration-150" data-path="radar" href="#">Radar</a><a class="font-label-lg text-label-lg text-ink-secondary hover:text-ink-primary transition-colors duration-150" data-path="work" href="#">Work</a><a class="font-label-lg text-label-lg text-ink-secondary hover:text-ink-primary transition-colors duration-150" data-path="planning" href="#">Planning</a><a class="font-label-lg text-label-lg text-ink-secondary hover:text-ink-primary transition-colors duration-150" data-path="insights" href="#">Insights</a></nav><div class="flex items-center gap-space-sm sm:gap-space-md shrink-0"><a class="inline-flex items-center gap-space-xs bg-ink-primary hover:bg-accent-terracotta text-canvas-paper hover:text-canvas-paper px-space-md py-space-xs transition-colors duration-200" data-path="add-work" href="#"><span class="material-symbols-outlined text-[16px] leading-none text-canvas-paper">add</span><span class="font-label-lg text-label-lg tracking-wide">Add Work</span></a><a aria-label="User Profile" class="shrink-0 ml-space-xs focus:outline-none" data-path="settings" href="#"><img alt="Profile" class="w-8 h-8 rounded-full object-cover ring-1 ring-border-hairline" src="https://lh3.googleusercontent.com/aida/AEtjO1Wld39wfkwyqkrvPRbxyBsJO1lWPA2fPWCdy4SMsB-MO3vMAs9WkY5m4kURrciZfgaqEMAgy5yneKaHpe8POZYxf87gsi1yV4nQQEyuX-Sx74YxX5rSLMkJQ8lkGih2vi6fEMtFey92NW1_N_Ob23elLZab-VIstvAUdLSvdkx_61Q12sSivc2luuNUeGnBct2tN_FNRYy1Uyfa5DW1AEMedDwBQyim_MQM8BMVXOJeRhs9clVVGf9SIT8"/></a></div></div></header><main class="w-full pt-20 bg-surface min-h-screen"><div class="flex flex-col w-full">
+<!-- Editorial Sub-Navigation -->
+<div class="w-full bg-surface-container-low px-margin-mobile md:px-margin-tablet lg:px-margin py-space-xs">
+<div class="flex items-center justify-between">
+<nav aria-label="Planning Views" class="flex items-center gap-space-sm sm:gap-space-md">
+<a class="font-label-lg text-label-lg text-ink-secondary hover:text-ink-primary px-space-xs py-1 transition-colors" href="#">Planning</a>
+<a class="font-label-lg text-label-lg text-ink-secondary hover:text-ink-primary px-space-xs py-1 transition-colors" href="#">Timeline</a>
+<a aria-current="page" class="font-label-lg text-label-lg bg-ink-primary text-canvas-paper px-space-sm py-1 shadow-sm font-semibold" href="#">Calendar</a>
+<a class="font-label-lg text-label-lg text-ink-secondary hover:text-ink-primary px-space-xs py-1 transition-colors" href="#">Workload</a>
+</nav>
+<div class="hidden sm:flex items-center gap-space-sm text-ink-secondary">
+<span class="font-label-md text-label-md uppercase tracking-wider text-ink-muted">View Mode</span>
+<div class="flex items-center bg-surface-container p-0.5 rounded">
+<button class="px-space-xs py-0.5 font-label-md text-label-md text-ink-primary bg-surface shadow-xs font-semibold">Week</button>
+<button class="px-space-xs py-0.5 font-label-md text-label-md text-ink-secondary hover:text-ink-primary">Day</button>
+<button class="px-space-xs py-0.5 font-label-md text-label-md text-ink-secondary hover:text-ink-primary">Agenda</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Editorial Lead Header Section -->
+<section class="w-full px-margin-mobile md:px-margin-tablet lg:px-margin pt-space-lg pb-space-md">
+<div class="flex flex-col lg:flex-row lg:items-end justify-between gap-space-md">
+<div class="flex flex-col gap-space-xs max-w-2xl">
+<div class="flex items-center gap-space-xs">
+<span class="w-2 h-2 rounded-full bg-accent-terracotta inline-block"></span>
+<span class="font-label-md text-label-md uppercase tracking-widest text-ink-muted">Temporal Capacity Instrument</span>
+</div>
+<h1 class="font-headline-xl text-headline-xl text-ink-primary tracking-tight">Calendar</h1>
+<p class="font-body-xl text-body-xl text-ink-secondary leading-relaxed">
+          Spatial distribution of your week. White space represents genuine uncommitted time.
+        </p>
+</div>
+<!-- Navigation & Scope Switcher -->
+<div class="flex flex-wrap items-center gap-space-sm sm:gap-space-md self-start lg:self-end">
+<div class="flex items-center bg-surface-cream px-space-sm py-space-xs gap-space-xs">
+<button aria-label="Previous week" class="w-7 h-7 flex items-center justify-center text-ink-primary hover:bg-surface transition-colors">
+<span class="material-symbols-outlined text-[18px]">chevron_left</span>
+</button>
+<span class="font-headline-md text-headline-md px-space-xs text-ink-primary">Mon Oct 16 – Sun Oct 22</span>
+<button aria-label="Next week" class="w-7 h-7 flex items-center justify-center text-ink-primary hover:bg-surface transition-colors">
+<span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+</div>
+<button class="font-label-lg text-label-lg bg-surface-container hover:bg-surface-tint text-ink-primary px-space-md py-space-xs transition-colors">
+          Jump to Now
+        </button>
+</div>
+</div>
+<!-- Supporting State 24: Conflict & Capacity Ledger Banner -->
+<div class="mt-space-md w-full bg-surface-cream p-space-md flex flex-col md:flex-row md:items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm">
+<div class="w-7 h-7 bg-surface flex items-center justify-center text-ink-primary">
+<span class="material-symbols-outlined text-[18px]">check_circle</span>
+</div>
+<div>
+<span class="font-label-lg text-label-lg text-ink-primary font-semibold">Zero conflicts detected</span>
+<span class="font-body-md text-body-md text-ink-secondary ml-2">· 4.0h uncommitted buffer intact across 7 days.</span>
+</div>
+</div>
+<div class="flex items-center gap-space-lg text-ink-secondary">
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 bg-primary-container inline-block"></span>
+<span class="font-label-md text-label-md">Scheduled Work (28.5h)</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 bg-surface-tint inline-block"></span>
+<span class="font-label-md text-label-md">Sanctuary &amp; Health (24.0h)</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 bg-surface-container-lowest inline-block"></span>
+<span class="font-label-md text-label-md">Verified Open Windows</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Editorial Spatial Calendar Grid -->
+<section class="w-full px-margin-mobile md:px-margin-tablet lg:px-margin pb-space-2xl overflow-x-auto">
+<div class="min-w-[980px] w-full flex flex-col bg-surface-container-low shadow-sm">
+<!-- Day Headers & Deadline Flags -->
+<div class="grid grid-cols-[80px_repeat(7,1fr)] bg-surface-container-high">
+<!-- Corner spacer for time axis -->
+<div class="p-space-xs flex flex-col justify-end text-ink-muted">
+<span class="font-label-md text-label-md">UTC-05</span>
+</div>
+<!-- Monday -->
+<div class="p-space-xs bg-surface-container-high flex flex-col gap-1">
+<div class="flex items-baseline justify-between">
+<span class="font-headline-md text-headline-md text-ink-primary">16</span>
+<span class="font-label-md text-label-md uppercase tracking-wider text-ink-secondary">Mon</span>
+</div>
+<div class="h-6 flex items-center">
+<span class="font-label-md text-label-md text-ink-muted">Steady runway</span>
+</div>
+</div>
+<!-- Tuesday -->
+<div class="p-space-xs bg-surface-container-high flex flex-col gap-1">
+<div class="flex items-baseline justify-between">
+<span class="font-headline-md text-headline-md text-ink-primary">17</span>
+<span class="font-label-md text-label-md uppercase tracking-wider text-ink-secondary">Tue</span>
+</div>
+<div class="h-6 flex items-center">
+<span class="font-label-md text-label-md text-ink-muted">Deep code day</span>
+</div>
+</div>
+<!-- Wednesday -->
+<div class="p-space-xs bg-surface-container-high flex flex-col gap-1">
+<div class="flex items-baseline justify-between">
+<span class="font-headline-md text-headline-md text-ink-primary">18</span>
+<span class="font-label-md text-label-md uppercase tracking-wider text-ink-secondary">Wed</span>
+</div>
+<div class="h-6 flex items-center">
+<span class="font-label-md text-label-md text-ink-muted">Midweek check</span>
+</div>
+</div>
+<!-- Thursday -->
+<div class="p-space-xs bg-surface-container-high flex flex-col gap-1">
+<div class="flex items-baseline justify-between">
+<span class="font-headline-md text-headline-md text-ink-primary">19</span>
+<span class="font-label-md text-label-md uppercase tracking-wider text-ink-secondary">Thu</span>
+</div>
+<div class="h-6 flex items-center">
+<span class="font-label-md text-label-md text-ink-muted">Final drafts</span>
+</div>
+</div>
+<!-- Friday with Deadline Pin -->
+<div class="p-space-xs bg-surface-cream flex flex-col gap-1">
+<div class="flex items-baseline justify-between">
+<span class="font-headline-md text-headline-md text-accent-terracotta">20</span>
+<span class="font-label-md text-label-md uppercase tracking-wider text-accent-terracotta font-semibold">Fri</span>
+</div>
+<div class="h-6 flex items-center gap-1.5 bg-accent-terracotta text-canvas-paper px-2 py-0.5">
+<span class="material-symbols-outlined text-[13px] leading-none">flag</span>
+<span class="font-label-md text-label-md truncate font-medium">17:00 ML Assignment</span>
+</div>
+</div>
+<!-- Saturday -->
+<div class="p-space-xs bg-surface-container-high flex flex-col gap-1">
+<div class="flex items-baseline justify-between">
+<span class="font-headline-md text-headline-md text-ink-primary">21</span>
+<span class="font-label-md text-label-md uppercase tracking-wider text-ink-secondary">Sat</span>
+</div>
+<div class="h-6 flex items-center">
+<span class="font-label-md text-label-md text-ink-muted">Recovery &amp; review</span>
+</div>
+</div>
+<!-- Sunday with Deadline Pin -->
+<div class="p-space-xs bg-surface-cream flex flex-col gap-1">
+<div class="flex items-baseline justify-between">
+<span class="font-headline-md text-headline-md text-accent-terracotta">22</span>
+<span class="font-label-md text-label-md uppercase tracking-wider text-accent-terracotta font-semibold">Sun</span>
+</div>
+<div class="h-6 flex items-center gap-1.5 bg-accent-terracotta text-canvas-paper px-2 py-0.5">
+<span class="material-symbols-outlined text-[13px] leading-none">flag</span>
+<span class="font-label-md text-label-md truncate font-medium">23:59 FastAPI Project</span>
+</div>
+</div>
+</div>
+<!-- Time Axis & Columns Wrapper -->
+<div class="grid grid-cols-[80px_repeat(7,1fr)] relative bg-surface-container-low" style="height: 1050px;">
+<!-- Y-Axis Hour Labels (08:00 to 22:00) -->
+<div class="flex flex-col h-full bg-surface-container select-none">
+<div class="h-[75px] pt-1 px-2 font-label-md text-label-md text-ink-muted flex items-start">08:00</div>
+<div class="h-[75px] pt-1 px-2 font-label-md text-label-md text-ink-muted flex items-start">09:00</div>
+<div class="h-[75px] pt-1 px-2 font-label-md text-label-md text-ink-muted flex items-start">10:00</div>
+<div class="h-[75px] pt-1 px-2 font-label-md text-label-md text-ink-muted flex items-start">11:00</div>
+<div class="h-[75px] pt-1 px-2 font-label-md text-label-md text-ink-muted flex items-start">12:00</div>
+<div class="h-[75px] pt-1 px-2 font-label-md text-label-md text-ink-muted flex items-start">13:00</div>
+<div class="h-[75px] pt-1 px-2 font-label-md text-label-md text-ink-muted flex items-start">14:00</div>
+<div class="h-[75px] pt-1 px-2 font-label-md text-label-md text-ink-muted flex items-start">15:00</div>
+<div class="h-[75px] pt-1 px-2 font-label-md text-label-md text-ink-muted flex items-start">16:00</div>
+<div class="h-[75px] pt-1 px-2 font-label-md text-label-md text-ink-muted flex items-start">17:00</div>
+<div class="h-[75px] pt-1 px-2 font-label-md text-label-md text-ink-muted flex items-start">18:00</div>
+<div class="h-[75px] pt-1 px-2 font-label-md text-label-md text-ink-muted flex items-start">19:00</div>
+<div class="h-[75px] pt-1 px-2 font-label-md text-label-md text-ink-muted flex items-start">20:00</div>
+<div class="h-[75px] pt-1 px-2 font-label-md text-label-md text-ink-muted flex items-start">21:00</div>
+</div>
+<!-- COLUMN 1: Monday -->
+<div class="relative h-full bg-surface-container-lowest/60">
+<!-- Hour tick marks (editorial style, background color stripes) -->
+<div class="absolute inset-0 flex flex-col pointer-events-none opacity-40">
+<div class="h-[75px] bg-transparent"></div>
+<div class="h-[75px] bg-surface-container-low/40"></div>
+<div class="h-[75px] bg-transparent"></div>
+<div class="h-[75px] bg-surface-container-low/40"></div>
+<div class="h-[75px] bg-transparent"></div>
+<div class="h-[75px] bg-surface-container-low/40"></div>
+<div class="h-[75px] bg-transparent"></div>
+<div class="h-[75px] bg-surface-container-low/40"></div>
+<div class="h-[75px] bg-transparent"></div>
+<div class="h-[75px] bg-surface-container-low/40"></div>
+<div class="h-[75px] bg-transparent"></div>
+<div class="h-[75px] bg-surface-container-low/40"></div>
+<div class="h-[75px] bg-transparent"></div>
+<div class="h-[75px] bg-surface-container-low/40"></div>
+</div>
+<!-- 08:00 - 09:00 Protected Morning Ritual -->
+<div class="absolute top-[0px] left-1 right-1 h-[75px] bg-surface-tint p-2 flex flex-col justify-between">
+<span class="font-label-md text-label-md text-ink-secondary font-semibold uppercase tracking-tight">Morning Calibration</span>
+<span class="font-label-md text-label-md text-ink-muted">08:00–09:00</span>
+</div>
+<!-- 09:00 - 11:30 ML Assignment Focus (Work Block) -->
+<div class="absolute top-[75px] left-1 right-1 h-[187px] bg-primary-container text-canvas-paper p-space-xs flex flex-col justify-between shadow-xs">
+<div>
+<div class="flex items-center gap-1.5 mb-1">
+<span class="w-1.5 h-1.5 rounded-full bg-accent-terracotta"></span>
+<span class="font-label-md text-label-md uppercase tracking-wider text-canvas-paper/70">Focus Work</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-canvas-paper leading-snug">ML Assignment Focus</h2>
+<p class="font-body-md text-body-md text-canvas-paper/80 mt-0.5 line-clamp-2">PyTorch neural architecture &amp; backprop validation</p>
+</div>
+<span class="font-label-md text-label-md text-canvas-paper/60">09:00 – 11:30 (2.5h)</span>
+</div>
+<!-- 11:30 - 13:00 Open Focus Zone -->
+<div class="absolute top-[262px] left-1 right-1 h-[113px] bg-surface-container-lowest p-2 flex flex-col justify-between hover:bg-surface-cream transition-colors">
+<div class="flex items-center gap-1 text-ink-secondary">
+<span class="material-symbols-outlined text-[14px]">bedtime</span>
+<span class="font-label-md text-label-md font-semibold">Buffer Reserve (1.5h)</span>
+</div>
+<span class="font-label-md text-label-md text-ink-muted">Open runway</span>
+</div>
+<!-- 14:00 - 16:30 Client Consultation -->
+<div class="absolute top-[450px] left-1 right-1 h-[187px] bg-primary-container text-canvas-paper p-space-xs flex flex-col justify-between shadow-xs">
+<div>
+<div class="flex items-center gap-1.5 mb-1">
+<span class="w-1.5 h-1.5 rounded-full bg-surface-tint"></span>
+<span class="font-label-md text-label-md uppercase tracking-wider text-canvas-paper/70">External Alignment</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-canvas-paper leading-snug">Design Systems Review</h2>
+<p class="font-body-md text-body-md text-canvas-paper/80 mt-0.5">Component token audit &amp; spacing sync</p>
+</div>
+<span class="font-label-md text-label-md text-canvas-paper/60">14:00 – 16:30 (2.5h)</span>
+</div>
+<!-- 17:30 - 19:00 Physical Training -->
+<div class="absolute top-[712px] left-1 right-1 h-[113px] bg-surface-tint p-space-xs flex flex-col justify-between">
+<span class="font-label-md text-label-md text-ink-secondary font-semibold uppercase tracking-tight">Physical Training</span>
+<span class="font-body-md text-body-md text-ink-secondary">5km Run &amp; recovery stretch</span>
+<span class="font-label-md text-label-md text-ink-muted">17:30 – 19:00 (1.5h)</span>
+</div>
+</div>
+<!-- COLUMN 2: Tuesday -->
+<div class="relative h-full bg-surface-container-lowest/60">
+<!-- 09:30 - 12:30 FastAPI Core (Work Block) -->
+<div class="absolute top-[112px] left-1 right-1 h-[225px] bg-primary-container text-canvas-paper p-space-xs flex flex-col justify-between shadow-xs">
+<div>
+<div class="flex items-center gap-1.5 mb-1">
+<span class="w-1.5 h-1.5 rounded-full bg-accent-terracotta"></span>
+<span class="font-label-md text-label-md uppercase tracking-wider text-canvas-paper/70">Deep Engineering</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-canvas-paper leading-snug">FastAPI Core Architecture</h2>
+<p class="font-body-md text-body-md text-canvas-paper/80 mt-0.5 line-clamp-3">Async database middleware, Pydantic schemas, and token validation</p>
+</div>
+<span class="font-label-md text-label-md text-canvas-paper/60">09:30 – 12:30 (3.0h)</span>
+</div>
+<!-- 13:30 - 16:00 Available Focus Window -->
+<div class="absolute top-[412px] left-1 right-1 h-[188px] bg-surface-container-lowest p-space-xs flex flex-col justify-between hover:bg-surface-cream transition-colors">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md uppercase tracking-wide text-ink-primary font-semibold">Available Focus Window</span>
+<span class="font-label-md text-label-md bg-surface-tint text-ink-primary px-1.5 py-0.5">2.5h open</span>
+</div>
+<p class="font-body-md text-body-md text-ink-secondary">Optimal biological rhythm for technical composition or thesis synthesis.</p>
+<span class="font-label-md text-label-md text-ink-muted">Uncommitted capacity</span>
+</div>
+<!-- 18:00 - 20:00 Family Dinner -->
+<div class="absolute top-[750px] left-1 right-1 h-[150px] bg-surface-tint p-space-xs flex flex-col justify-between">
+<span class="font-label-md text-label-md text-ink-secondary font-semibold uppercase tracking-tight">Family Dinner</span>
+<span class="font-body-md text-body-md text-ink-secondary">Uninterrupted presence</span>
+<span class="font-label-md text-label-md text-ink-muted">18:00 – 20:00 (2.0h)</span>
+</div>
+</div>
+<!-- COLUMN 3: Wednesday -->
+<div class="relative h-full bg-surface-container-lowest/60">
+<!-- 08:30 - 11:30 ML Assignment Focus -->
+<div class="absolute top-[37px] left-1 right-1 h-[225px] bg-primary-container text-canvas-paper p-space-xs flex flex-col justify-between shadow-xs">
+<div>
+<div class="flex items-center gap-1.5 mb-1">
+<span class="w-1.5 h-1.5 rounded-full bg-accent-terracotta"></span>
+<span class="font-label-md text-label-md uppercase tracking-wider text-canvas-paper/70">Focus Work</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-canvas-paper leading-snug">ML Evaluation Run</h2>
+<p class="font-body-md text-body-md text-canvas-paper/80 mt-0.5 line-clamp-2">ROC curves, hyperparameter tuning &amp; convergence analysis</p>
+</div>
+<span class="font-label-md text-label-md text-canvas-paper/60">08:30 – 11:30 (3.0h)</span>
+</div>
+<!-- 12:00 - 13:30 Available Focus Window -->
+<div class="absolute top-[300px] left-1 right-1 h-[112px] bg-surface-container-lowest p-2 flex flex-col justify-between hover:bg-surface-cream transition-colors">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md font-semibold text-ink-primary">Available Focus</span>
+<span class="font-label-md text-label-md text-ink-muted">1.5h open</span>
+</div>
+<span class="font-label-md text-label-md text-ink-muted">Midday quiet</span>
+</div>
+<!-- 15:00 - 17:30 Literature Review -->
+<div class="absolute top-[525px] left-1 right-1 h-[187px] bg-primary-container text-canvas-paper p-space-xs flex flex-col justify-between shadow-xs">
+<div>
+<div class="flex items-center gap-1.5 mb-1">
+<span class="w-1.5 h-1.5 rounded-full bg-surface-tint"></span>
+<span class="font-label-md text-label-md uppercase tracking-wider text-canvas-paper/70">Academic</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-canvas-paper leading-snug">Literature Citations</h2>
+<p class="font-body-md text-body-md text-canvas-paper/80 mt-0.5">Deep attention transformer bibliographies</p>
+</div>
+<span class="font-label-md text-label-md text-canvas-paper/60">15:00 – 17:30 (2.5h)</span>
+</div>
+<!-- 17:30 - 19:00 Physical Training -->
+<div class="absolute top-[712px] left-1 right-1 h-[113px] bg-surface-tint p-space-xs flex flex-col justify-between">
+<span class="font-label-md text-label-md text-ink-secondary font-semibold uppercase tracking-tight">Physical Training</span>
+<span class="font-label-md text-label-md text-ink-muted">17:30 – 19:00 (1.5h)</span>
+</div>
+</div>
+<!-- COLUMN 4: Thursday -->
+<div class="relative h-full bg-surface-container-lowest/60">
+<!-- 09:00 - 12:00 FastAPI Core (Work Block) -->
+<div class="absolute top-[75px] left-1 right-1 h-[225px] bg-primary-container text-canvas-paper p-space-xs flex flex-col justify-between shadow-xs">
+<div>
+<div class="flex items-center gap-1.5 mb-1">
+<span class="w-1.5 h-1.5 rounded-full bg-accent-terracotta"></span>
+<span class="font-label-md text-label-md uppercase tracking-wider text-canvas-paper/70">Core Build</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-canvas-paper leading-snug">FastAPI Endpoints &amp; CI</h2>
+<p class="font-body-md text-body-md text-canvas-paper/80 mt-0.5 line-clamp-3">Unit test suite, rate limiting, and OpenAPI specs</p>
+</div>
+<span class="font-label-md text-label-md text-canvas-paper/60">09:00 – 12:00 (3.0h)</span>
+</div>
+<!-- 13:00 - 15:30 ML Final Polish -->
+<div class="absolute top-[375px] left-1 right-1 h-[187px] bg-primary-container text-canvas-paper p-space-xs flex flex-col justify-between shadow-xs">
+<div>
+<div class="flex items-center gap-1.5 mb-1">
+<span class="w-1.5 h-1.5 rounded-full bg-accent-terracotta"></span>
+<span class="font-label-md text-label-md uppercase tracking-wider text-canvas-paper/70">Pre-Submission</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-canvas-paper leading-snug">ML Report Synthesis</h2>
+<p class="font-body-md text-body-md text-canvas-paper/80 mt-0.5">Final diagram generation and executive summary</p>
+</div>
+<span class="font-label-md text-label-md text-canvas-paper/60">13:00 – 15:30 (2.5h)</span>
+</div>
+<!-- 16:00 - 17:30 Buffer Reserve -->
+<div class="absolute top-[600px] left-1 right-1 h-[112px] bg-surface-container-lowest p-2 flex flex-col justify-between hover:bg-surface-cream transition-colors">
+<span class="font-label-md text-label-md font-semibold text-ink-primary">Buffer Reserve (1.5h)</span>
+<span class="font-label-md text-label-md text-ink-muted">Margin for unexpected drift</span>
+</div>
+</div>
+<!-- COLUMN 5: Friday (Deadline Day) -->
+<div class="relative h-full bg-surface-cream/40">
+<!-- 09:00 - 12:00 Final Verification -->
+<div class="absolute top-[75px] left-1 right-1 h-[225px] bg-primary-container text-canvas-paper p-space-xs flex flex-col justify-between shadow-xs">
+<div>
+<div class="flex items-center gap-1.5 mb-1">
+<span class="w-1.5 h-1.5 rounded-full bg-status-alert"></span>
+<span class="font-label-md text-label-md uppercase tracking-wider text-accent-terracotta font-semibold">Final Submission Window</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-canvas-paper leading-snug">ML Assignment Final Turn-in</h2>
+<p class="font-body-md text-body-md text-canvas-paper/80 mt-0.5 line-clamp-2">Code packaging, PDF generation, grading schema check</p>
+</div>
+<span class="font-label-md text-label-md text-canvas-paper/60">09:00 – 12:00 (3.0h)</span>
+</div>
+<!-- 12:00 - 17:00 Buffer zone prior to 17:00 deadline -->
+<div class="absolute top-[300px] left-1 right-1 h-[375px] bg-surface-container-lowest p-space-xs flex flex-col justify-between">
+<div>
+<span class="font-label-md text-label-md uppercase tracking-wide text-ink-primary font-semibold">5.0h Protected Pre-Deadline Span</span>
+<p class="font-body-md text-body-md text-ink-secondary mt-1">Zero appointments permitted prior to 17:00 handoff.</p>
+</div>
+<div class="bg-accent-terracotta text-canvas-paper px-2 py-1 flex items-center justify-between">
+<span class="font-label-md text-label-md font-semibold">Deadline Target: 17:00</span>
+<span class="material-symbols-outlined text-[15px]">done_all</span>
+</div>
+</div>
+<!-- 17:30 - 20:30 Social & Recovery -->
+<div class="absolute top-[712px] left-1 right-1 h-[225px] bg-surface-tint p-space-xs flex flex-col justify-between">
+<span class="font-label-md text-label-md text-ink-secondary font-semibold uppercase tracking-tight">Post-Deadline Decompression</span>
+<p class="font-body-md text-body-md text-ink-secondary">Dinner with studio team</p>
+<span class="font-label-md text-label-md text-ink-muted">17:30 – 20:30 (3.0h)</span>
+</div>
+</div>
+<!-- COLUMN 6: Saturday -->
+<div class="relative h-full bg-surface-container-lowest/60">
+<!-- 09:00 - 11:30 Morning Sanctuary -->
+<div class="absolute top-[75px] left-1 right-1 h-[187px] bg-surface-tint p-space-xs flex flex-col justify-between">
+<span class="font-label-md text-label-md text-ink-secondary font-semibold uppercase tracking-tight">Sleep Sanctuary &amp; Reading</span>
+<span class="font-body-md text-body-md text-ink-secondary">Non-screen intellectual restoration</span>
+<span class="font-label-md text-label-md text-ink-muted">09:00 – 11:30 (2.5h)</span>
+</div>
+<!-- 13:00 - 16:00 FastAPI Sprint -->
+<div class="absolute top-[375px] left-1 right-1 h-[225px] bg-primary-container text-canvas-paper p-space-xs flex flex-col justify-between shadow-xs">
+<div>
+<div class="flex items-center gap-1.5 mb-1">
+<span class="w-1.5 h-1.5 rounded-full bg-accent-terracotta"></span>
+<span class="font-label-md text-label-md uppercase tracking-wider text-canvas-paper/70">Focused Sprint</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-canvas-paper leading-snug">FastAPI Deployment &amp; Docker</h2>
+<p class="font-body-md text-body-md text-canvas-paper/80 mt-0.5 line-clamp-3">Dockerfile multi-stage optimization, AWS staging deployment</p>
+</div>
+<span class="font-label-md text-label-md text-canvas-paper/60">13:00 – 16:00 (3.0h)</span>
+</div>
+<!-- 16:30 - 19:30 Open Buffer -->
+<div class="absolute top-[637px] left-1 right-1 h-[225px] bg-surface-container-lowest p-space-xs flex flex-col justify-between hover:bg-surface-cream transition-colors">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md font-semibold text-ink-primary">Buffer Reserve</span>
+<span class="font-label-md text-label-md bg-surface-tint text-ink-primary px-1.5 py-0.5">3.0h</span>
+</div>
+<p class="font-body-md text-body-md text-ink-muted">Generous unscheduled evening margin.</p>
+<span class="font-label-md text-label-md text-ink-muted">Clear space</span>
+</div>
+</div>
+<!-- COLUMN 7: Sunday (FastAPI Deadline) -->
+<div class="relative h-full bg-surface-cream/40">
+<!-- 10:00 - 13:00 Final Integration -->
+<div class="absolute top-[150px] left-1 right-1 h-[225px] bg-primary-container text-canvas-paper p-space-xs flex flex-col justify-between shadow-xs">
+<div>
+<div class="flex items-center gap-1.5 mb-1">
+<span class="w-1.5 h-1.5 rounded-full bg-accent-terracotta"></span>
+<span class="font-label-md text-label-md uppercase tracking-wider text-canvas-paper/70">Final Sprint</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-canvas-paper leading-snug">FastAPI Production Smoke Test</h2>
+<p class="font-body-md text-body-md text-canvas-paper/80 mt-0.5 line-clamp-2">Postman assertions &amp; monitoring dashboard</p>
+</div>
+<span class="font-label-md text-label-md text-canvas-paper/60">10:00 – 13:00 (3.0h)</span>
+</div>
+<!-- 14:00 - 17:00 Buffer Reserve -->
+<div class="absolute top-[450px] left-1 right-1 h-[225px] bg-surface-container-lowest p-space-xs flex flex-col justify-between hover:bg-surface-cream transition-colors">
+<span class="font-label-md text-label-md font-semibold text-ink-primary">Buffer Reserve (3.0h)</span>
+<p class="font-body-md text-body-md text-ink-muted">Pre-deadline stabilization window</p>
+<span class="font-label-md text-label-md text-ink-muted">Uncommitted capacity</span>
+</div>
+<!-- 18:00 - 21:00 Final Review & Tagging -->
+<div class="absolute top-[750px] left-1 right-1 h-[225px] bg-primary-container text-canvas-paper p-space-xs flex flex-col justify-between shadow-xs">
+<div>
+<div class="flex items-center gap-1.5 mb-1">
+<span class="w-1.5 h-1.5 rounded-full bg-status-alert"></span>
+<span class="font-label-md text-label-md uppercase tracking-wider text-accent-terracotta font-semibold">23:59 Due Date Release</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-canvas-paper leading-snug">FastAPI Repo Release v1.0</h2>
+<p class="font-body-md text-body-md text-canvas-paper/80 mt-0.5">Semantic version tag and repository dispatch</p>
+</div>
+<span class="font-label-md text-label-md text-canvas-paper/60">18:00 – 21:00 (3.0h)</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Editorial Split Context Section: Capacity Insights & Plate Photography -->
+<section class="w-full px-margin-mobile md:px-margin-tablet lg:px-margin pb-space-2xl">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
+<!-- 7 Columns: Open Editorial List of Weekly Commitments -->
+<div class="lg:col-span-7 flex flex-col gap-space-md">
+<div class="flex flex-col gap-1">
+<span class="font-label-md text-label-md uppercase tracking-widest text-ink-muted">Capacity Audit</span>
+<h2 class="font-headline-lg text-headline-lg text-ink-primary">Commitment Ledger for Oct 16 – 22</h2>
+</div>
+<div class="flex flex-col gap-0 divide-y-0">
+<!-- Row 1 -->
+<div class="py-space-md flex flex-col sm:flex-row sm:items-baseline justify-between gap-space-xs bg-surface hover:bg-surface-cream px-space-xs transition-colors">
+<div class="sm:w-32 shrink-0">
+<span class="font-numeric-hero text-[24px] leading-tight text-ink-primary">11.0<span class="text-body-md font-body-md text-ink-secondary">h</span></span>
+<p class="font-label-md text-label-md text-ink-muted">Allocated</p>
+</div>
+<div class="flex-1 pr-space-md">
+<h3 class="font-headline-md text-headline-md text-ink-primary">Machine Learning Assignment</h3>
+<p class="font-body-md text-body-md text-ink-secondary mt-1">PyTorch model design, cross-entropy tuning, and final thesis draft. Fully mapped into high-alert daylight slots.</p>
+</div>
+<div class="sm:text-right shrink-0">
+<span class="font-label-md text-label-md text-accent-terracotta font-semibold">Due Fri 17:00</span>
+<p class="font-label-md text-label-md text-ink-muted">Status: On Pace</p>
+</div>
+</div>
+<!-- Row 2 -->
+<div class="py-space-md flex flex-col sm:flex-row sm:items-baseline justify-between gap-space-xs bg-surface hover:bg-surface-cream px-space-xs transition-colors">
+<div class="sm:w-32 shrink-0">
+<span class="font-numeric-hero text-[24px] leading-tight text-ink-primary">12.0<span class="text-body-md font-body-md text-ink-secondary">h</span></span>
+<p class="font-label-md text-label-md text-ink-muted">Allocated</p>
+</div>
+<div class="flex-1 pr-space-md">
+<h3 class="font-headline-md text-headline-md text-ink-primary">FastAPI Core Platform</h3>
+<p class="font-body-md text-body-md text-ink-secondary mt-1">Asynchronous API pipeline, validation test matrix, and production staging build.</p>
+</div>
+<div class="sm:text-right shrink-0">
+<span class="font-label-md text-label-md text-accent-terracotta font-semibold">Due Sun 23:59</span>
+<p class="font-label-md text-label-md text-ink-muted">Status: Confirmed Fit</p>
+</div>
+</div>
+<!-- Row 3 -->
+<div class="py-space-md flex flex-col sm:flex-row sm:items-baseline justify-between gap-space-xs bg-surface hover:bg-surface-cream px-space-xs transition-colors">
+<div class="sm:w-32 shrink-0">
+<span class="font-numeric-hero text-[24px] leading-tight text-ink-secondary">4.0<span class="text-body-md font-body-md text-ink-secondary">h</span></span>
+<p class="font-label-md text-label-md text-ink-muted">Buffer Reserve</p>
+</div>
+<div class="flex-1 pr-space-md">
+<h3 class="font-headline-md text-headline-md text-ink-primary">Uncommitted Elastic Space</h3>
+<p class="font-body-md text-body-md text-ink-secondary mt-1">Four pure unallocated hours reserved for unexpected debugging runs, thesis editing, or pure physical decompression.</p>
+</div>
+<div class="sm:text-right shrink-0">
+<span class="font-label-md text-label-md text-ink-primary font-semibold">Zero Spills</span>
+<p class="font-label-md text-label-md text-ink-muted">Safe margin</p>
+</div>
+</div>
+</div>
+</div>
+<!-- 5 Columns: Photography Plate & Spatial Insight -->
+<div class="lg:col-span-5 flex flex-col gap-space-md">
+<div class="relative overflow-hidden bg-surface-cream">
+<img class="w-full h-80 object-cover" data-alt="Quiet minimalist workspace seen in natural warm daylight. An open notebook sits beside a matte ceramic coffee mug, an unadorned brass pen, and a sleek modern laptop displaying code in an uncluttered editor. The atmosphere is warm, serene, deeply editorial, reflecting human cognitive capacity and disciplined focus with warm earth tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBebgt4bECfPgMiIgCih7R8U9OgDIoGY0aahKygvLRDFOGo17jfl3CiK8Dr6pqeoDIm6fNsCUV8wkPBHAipvjsgkjRLEguP3t1qH70jIMJZGewTNpkmnehav3LBQx96wd8GJRR4eT4zNGkrRJdP1za-GNNRGSi5UDNmP8vXQk4dXrLLi5geu_NeVD4zhotRjvDIg57aZVwyNAhskU1DjuQvc9TQLR6_HF378ZPzuodH-9N7Sadzx2L5PQ"/>
+<div class="p-space-md bg-surface-cream flex flex-col gap-space-xs">
+<span class="font-label-md text-label-md uppercase tracking-wider text-ink-muted">Canon of Work</span>
+<p class="font-body-lg text-body-lg text-ink-primary leading-snug">
+              "True productivity is not the density of pixels on a calendar, but the intentional protection of empty space."
+            </p>
+<span class="font-label-md text-label-md text-ink-secondary">— Temporal Principles, Vol. IV</span>
+</div>
+</div>
+<!-- Weekly Summary Stat Metric Plate -->
+<div class="bg-surface-container p-space-md flex items-center justify-between">
+<div>
+<span class="font-label-md text-label-md uppercase tracking-wider text-ink-muted">Week 42 Reality Factor</span>
+<h4 class="font-headline-lg text-headline-lg text-ink-primary">82% Commensurate</h4>
+<p class="font-body-md text-body-md text-ink-secondary">Demand aligns with human circadian capacity.</p>
+</div>
+<div class="w-12 h-12 rounded-full bg-ink-primary text-canvas-paper flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[24px]">verified</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div></main><footer class="w-full bg-surface-container-low"><div class="w-full px-margin-mobile md:px-margin-tablet lg:px-margin py-space-lg flex flex-col md:flex-row items-baseline justify-between gap-space-md"><div class="flex flex-col gap-space-xs"><span class="font-headline-md text-headline-md text-ink-primary">Deadline Radar</span><p class="font-body-md text-body-md text-ink-secondary max-w-sm">An editorial, calm, and intellectually grounded personal deadline intelligence instrument.</p></div><div class="flex flex-wrap items-center gap-space-lg"><a class="font-label-md text-label-md text-ink-secondary hover:text-ink-primary transition-colors" data-path="radar" href="#">Radar Overview</a><a class="font-label-md text-label-md text-ink-secondary hover:text-ink-primary transition-colors" data-path="planning" href="#">Capacity Allocation</a><a class="font-label-md text-label-md text-ink-secondary hover:text-ink-primary transition-colors" data-path="priorities" href="#">Priorities</a><a class="font-label-md text-label-md text-ink-secondary hover:text-ink-primary transition-colors" data-path="settings" href="#">Preferences</a><span class="font-label-md text-label-md text-ink-muted">© 2025 Deadline Radar. Human Capacity First.</span></div></div></footer>
+</body></html>
