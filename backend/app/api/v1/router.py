@@ -5,6 +5,8 @@ from app.api.v1.endpoints import (
     auth,
     availability,
     health,
+    planning,
+    today,
     tracking,
     users,
     work,
@@ -17,3 +19,5 @@ api_router.include_router(users.router, prefix="/users", tags=["Users & Preferen
 api_router.include_router(work.router, prefix="/work", tags=["Work Management"])
 api_router.include_router(availability.router, prefix="/availability", tags=["Time Availability"])
 api_router.include_router(tracking.router, prefix="/tracking", tags=["Time Tracking"])
+api_router.include_router(planning.router, tags=["Planning"])
+api_router.include_router(today.router, tags=["Today Execution"])

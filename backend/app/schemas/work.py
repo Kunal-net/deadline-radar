@@ -16,11 +16,11 @@ class WorkItemCreateRequest(AppBaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
     category: str = Field(default="academic", max_length=64)
-    deadline_utc: Optional[datetime] = None
+    deadline_utc: Optional[datetime] = Field(None, alias="deadline")
     is_hard_deadline: bool = True
     importance_weight: float = Field(default=1.0, ge=0.5, le=3.0)
     estimated_hours: float = Field(default=0.0, ge=0.0)
-    initial_units: Optional[List[InitialUnitCreate]] = None
+    initial_units: Optional[List[InitialUnitCreate]] = Field(None, alias="units")
 
 
 class WorkItemUpdateRequest(AppBaseModel):
