@@ -160,12 +160,23 @@
 ---
 
 ## Phase 06 — Work Management API
-- **Status**: Pending
-- **Date**: —
-- **Summary**: —
-- **Files**: —
-- **Tests**: —
-- **Notes**: —
+- **Status**: Completed
+- **Date**: 2026-09-20
+- **Summary**:
+  - Implemented complete Work Management domain service and REST APIs (`WorkService`, `GET/POST /api/v1/work`, `GET/PATCH/DELETE /api/v1/work/{id}`).
+  - Implemented subtasks / Work Units APIs (`GET/POST /api/v1/work/{id}/units`, `PATCH/DELETE /api/v1/work/{id}/units/{unit_id}`, `PUT /api/v1/work/{id}/units/reorder`).
+  - Added deterministic recalculation of parent work item remaining effort, actual effort, and completion percentage upon subtask mutations or status changes.
+  - Implemented baseline deadline risk ratio and dynamic priority calculations handling timezone-aware deadlines and overdue boundaries.
+  - Enforced strict row-level user ownership isolation on all work items and subtasks.
+  - Added comprehensive integration tests covering work creation with initial units, filtering, pagination, subtask completion, dynamic unit addition, atomic sequence reordering, and cross-user isolation.
+- **Files**:
+  - `backend/app/schemas/work.py`
+  - `backend/app/services/work_service.py`
+  - `backend/app/api/v1/endpoints/work.py`
+  - `backend/app/api/v1/router.py`
+  - `backend/tests/integration/test_work_api.py`
+- **Tests**: 18 tests passing across unit and integration suites.
+- **Next Phase**: Phase 07 — Time Availability & Tracking.
 
 ---
 
