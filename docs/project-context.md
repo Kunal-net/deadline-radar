@@ -76,32 +76,34 @@ The critical failure point is not merely discovering opportunities—it is **rem
 
 ## Technology Stack
 - **Backend**: Python 3.11+, FastAPI (asynchronous REST API, OpenAPI docs).
-- **Database**: PostgreSQL 15+, SQLAlchemy ORM (async session), Alembic (migrations).
-- **Frontend**: Modern TypeScript SPA (`TODO — NEEDS DECISION`: Recommend Vite + React + TypeScript).
-- **AI/ML**: Python NLP / LLM integration layer (`TODO — MODEL SELECTION`: Modular interface, model/provider TBD).
-- **Containerization**: Docker & Docker Compose (`TODO — NEEDS DECISION`).
+- **Database**: PostgreSQL 15+, SQLAlchemy ORM 2.0 (asyncio), Alembic (migrations).
+- **Frontend**: Vite + React 18+ + TypeScript + TanStack Query + Vanilla CSS / CSS Modules (ADR-003).
+- **AI/ML**: Modular Python service facade invoking hosted LLM structured output APIs (Gemini 1.5 Flash / OpenAI GPT-4o-mini).
+- **Background Worker**: In-process lightweight `asyncio` task loop running inside FastAPI container.
+- **Search**: PostgreSQL native full-text search (`tsvector`) and trigram matching (`pg_trgm`).
+- **Containerization**: Docker & Docker Compose.
 
 ---
 
 ## AI/ML Components
 - **Information Extraction**: Parsing messy text/HTML into validated Pydantic models (Title, Org, Deadline, Eligibility, URL, etc.).
-- **Categorization**: Multi-class categorization into opportunity domains.
+- **Categorization**: Multi-class categorization into 13 standardized opportunity domains.
 - **Summarization**: Generating concise 2-sentence executive summaries and bulleted requirement checklists.
-- **Deduplication**: Detecting duplicate listings across multiple submission channels.
-- **Semantic Search & Personalization**: Natural language query matching and ranking based on user skills/interests.
+- **Deduplication**: Exact canonical URL matching and Jaro-Winkler title distance.
+- **Semantic Search & Personalization**: Deferred to post-MVP (`pgvector`).
 
 ---
 
 ## Data Sources
-- **Current State**: No static dataset exists.
-- **Future Ingestion Pipeline**: Public APIs, verified RSS feeds, user-submitted links/texts, and community contributions.
-- **Architectural Requirement**: Sources must plug into a common, normalized ingestion pipeline without tight coupling to the core domain models.
+- **Current State**: Seed catalog + user submissions.
+- **Future Ingestion Pipeline**: Pluggable source adapters for public APIs, verified RSS feeds, and platform scrapers (Devpost, Unstop).
+- **Architectural Requirement**: Sources must plug into a common, normalized ingestion pipeline without tight coupling to core domain models.
 
 ---
 
 ## External Services
-- **Transactional Notifications**: Email / push provider (e.g., Resend, SendGrid, or AWS SES - `TODO — NEEDS DECISION`).
-- **AI Provider**: LLM / Embedding API (e.g., Gemini, OpenAI, Claude, or local Ollama / HuggingFace - `TODO — MODEL SELECTION`).
+- **AI Provider**: Hosted LLM API (Google Gemini 1.5 Flash or OpenAI GPT-4o-mini).
+- **Transactional Notifications**: Deferred to post-MVP (Resend / AWS SES); in-app notifications used for MVP.
 
 ---
 
@@ -122,27 +124,28 @@ The critical failure point is not merely discovering opportunities—it is **rem
 ---
 
 ## Current Development Status
-- **Phase**: Initialization & Architecture Foundation (Phase 0 - 16).
-- **Application Code**: None yet. Foundation and contracts established first.
+- **Phase**: Architecture Design Complete. Ready for Database Design.
+- **Application Code**: None yet. Contracts and blueprints established first.
 
 ---
 
 ## Important Decisions
 1. **Product, Not Hackathon**: Designed for long-term production quality, not hackathon shortcuts.
-2. **Backend Direction**: FastAPI + SQLAlchemy + PostgreSQL chosen based on developer proficiency and async performance.
-3. **Decoupled AI Layer**: AI capabilities are isolated as external services/modular interfaces so underlying models can be swapped without rewriting business logic.
-4. **Documentation-Driven Development**: All endpoints, schemas, and architecture are documented before implementation.
-5. **Notification Delivery for MVP**: In-app notification center is the primary delivery channel for MVP, eliminating external email/SMTP dependencies while establishing milestone triggers (7d, 3d, 1d, day-of). Transactional email is deferred to post-MVP.
-6. **Distinct Opportunity vs. Application Lifecycles**: Strict separation between system-wide opportunity status (`OPEN`, `CLOSING_SOON`, `EXPIRED`) and private user tracking lifecycle (`SAVED`, `INTERESTED`, `APPLYING`, `APPLIED`, `SELECTED`, `REJECTED`, `COMPLETED`, `ARCHIVED`).
-7. **Scoped AI Capabilities**: MVP AI is focused strictly on unstructured entity extraction, taxonomy classification, and 2-sentence summaries. Semantic vector search and resume-matching recommendations are deferred.
+2. **Backend Direction**: FastAPI + SQLAlchemy + PostgreSQL chosen based on developer proficiency and async performance (ADR-001, ADR-002).
+3. **Frontend Stack**: Vite + React 18+ + TypeScript SPA with TanStack Query and Vanilla CSS/CSS Modules for speed, type safety, and rich UI aesthetics (ADR-003).
+4. **Decoupled AI Layer**: AI capabilities isolated as an in-process service facade calling hosted LLMs with strict JSON schemas, allowing model swapping without altering business logic (ADR-004).
+5. **Lightweight In-Process Background Worker**: Scheduled tasks (notification evaluation, periodic sync) run via Python `asyncio` task loop inside the API container, deferring Celery/Redis complexity (ADR-005).
+6. **Native PostgreSQL Search**: Full-text `tsvector` and trigram `pg_trgm` used for MVP search; dedicated vector DB deferred to post-MVP via `pgvector` (ADR-006).
+7. **In-App Notification Center for MVP**: Proves reminder generation logic without third-party email deliverability dependencies (ADR-007).
+8. **Distinct Opportunity vs. Application Lifecycles**: Strict separation between system-wide opportunity status (`OPEN`, `CLOSING_SOON`, `EXPIRED`) and private user tracking lifecycle (`SAVED`, `INTERESTED`, `APPLYING`, `APPLIED`, `SELECTED`, `REJECTED`, `COMPLETED`, `ARCHIVED`).
+9. **Documentation-Driven Development**: All endpoints, schemas, and architecture are documented before implementation.
 
 ---
 
 ## Open Questions
-1. **Frontend Stack**: Selection between Vite + React + TypeScript vs. Next.js (Working assumption: Vite + React + TypeScript SPA).
-2. **Authentication Mechanism**: JWT in HTTP-only cookies vs. Bearer tokens in localStorage, OAuth2 providers (Google/GitHub).
-3. **AI Inference Provider**: Selection of specific LLM provider for extraction (Working assumption: Gemini 1.5 Flash or OpenAI GPT-4o-mini).
-4. **Hosting & Deployment**: Selection between Render, Fly.io, Railway, or VPS.
+1. **Authentication Session Storage**: JWT Bearer token in Authorization header vs. HttpOnly secure cookie for production (Working assumption: Bearer header for early API development, migrating to HttpOnly cookies before public launch).
+2. **Production Hosting Platform**: Selection between Render, Railway, or Fly.io for containerized deployment.
+3. **Managed PostgreSQL Provider**: Selection between Neon, Supabase, or Railway Managed Postgres.
 
 ---
 
