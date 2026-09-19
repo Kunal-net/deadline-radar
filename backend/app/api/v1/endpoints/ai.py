@@ -16,6 +16,8 @@ from app.services.ai.schemas import (
     DecompositionResponse,
     EffortEstimationRequest,
     EffortEstimationResponse,
+    PlanningAssistanceRequest,
+    PlanningAssistanceResponse,
     WorkInterpretationRequest,
     WorkInterpretationResponse,
 )
@@ -202,4 +204,35 @@ async def estimate_work_effort(
         units_count=payload.units_count,
         user_pace_factor=pace_factor,
         historical_observations_count=obs_count,
+    )
+
+
+@router.post(
+    "/plan-assist",
+    response_model=PlanningAssistanceResponse,
+    status_code=status.HTTP_200_OK,
+    summary="AI Planning Assistance",
+    description=(
+        "Evaluates schedule pressure, trade-offs, sequencing, and conflict risks around the deterministic daily plan. "
+        "Deterministic capacity and constraints remain strictly authoritative."
+    ),
+)
+async def assist_planning(
+    payload: PlanningAssistanceRequest,
+    current_user: User = Depends(get_current_user),
+    ai_service: AIService = Depends(get_ai_service),
+) -> PlanningAssistanceResponse:
+    logger.info(
+        "Generating planning assistance for user_id=%s (date=%s, alloc=%.1f, avail=%.1f)",
+        current_user.id,
+        payload.date,
+        payload.allocated_hours,
+        payload.available_capacity_hours,
+    )
+    return await ai_service.planner_assistant.assist(
+        date=payload.date,
+        available_capacity_hours=payload.available_capacity_hours,
+        allocated_hours=payload.allocated_hours,
+        top_items=payload.top_items,
+        conflicts=payload.conflicts,
     )

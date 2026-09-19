@@ -347,23 +347,53 @@ class MockAIProvider(BaseAIProvider):
         avail = request.available_capacity_hours
         alloc = request.allocated_hours
 
+        conflicts = list(request.conflicts)
+        sequencing = []
+        if request.top_items:
+            for idx, item in enumerate(request.top_items[:3], start=1):
+                item_title = item.get("title", f"Task {idx}")
+                sequencing.append(f"Stage {idx}: Focus on '{item_title}' during peak morning attention.")
+
         if alloc > avail:
-            advice = f"Day is over-allocated ({alloc:.1f}h scheduled vs {avail:.1f}h available capacity). Defer lowest priority items to avoid burnout."
-            adjustments = ["Shift second-tier tasks to tomorrow.", "Protect at least 1 personal interest slot."]
-            strategy = "Aggressive triaging: focus only on critical path items."
-        elif alloc >= avail * 0.8:
-            advice = f"Day is well-balanced ({alloc:.1f}h allocated of {avail:.1f}h capacity). A realistic and productive day."
-            adjustments = ["Keep 15-minute breaks between deep work sessions."]
-            strategy = "Monotasking: execute top priority work in the morning focus window."
+            pressure = "overloaded"
+            advice = (
+                f"Schedule is over-allocated ({alloc:.1f}h scheduled vs {avail:.1f}h capacity). "
+                f"Deficit of {alloc - avail:.1f}h will cause schedule slippage unless lower-priority tasks are deferred."
+            )
+            tradeoffs = "Tradeoff: Deferring non-urgent items protects baseline quality on critical commitments and prevents cognitive fatigue."
+            adjustments = [
+                "Postpone second-tier work units to subsequent days.",
+                "Ensure protected personal interest blocks remain untouched to avoid burnout.",
+            ]
+            strategy = "Aggressive triaging: strictly execute high-risk critical path work first."
+        elif alloc >= avail * 0.75:
+            pressure = "balanced"
+            advice = f"Day is well-calibrated ({alloc:.1f}h allocated of {avail:.1f}h capacity). A realistic and productive cadence."
+            tradeoffs = "Tradeoff: Steady momentum across top items with sufficient buffer to absorb unexpected interruptions."
+            adjustments = [
+                "Insert 15-minute breaks between deep focus blocks.",
+                "Review progress at midday before tackling remaining units.",
+            ]
+            strategy = "Monotasking: tackle top priority work during the primary focus block."
         else:
-            advice = f"Light workload ({alloc:.1f}h allocated of {avail:.1f}h capacity). Opportunity to get ahead on upcoming milestones."
-            adjustments = ["Pull in upcoming subtask if feeling energized."]
-            strategy = "Early milestone progression and recovery."
+            pressure = "relaxed"
+            advice = f"Workload is light ({alloc:.1f}h allocated of {avail:.1f}h capacity). Surplus focus available."
+            tradeoffs = "Tradeoff: Opportunity to pull forward upcoming milestones or allow extra buffer for rest."
+            adjustments = [
+                "Optionally pull forward upcoming subtasks if energized.",
+                "Use surplus buffer for deep review and exploratory study.",
+            ]
+            strategy = "Early milestone acceleration and proactive buffer accumulation."
 
         return PlanningAssistanceResponse(
+            schedule_pressure=pressure,
             advice=advice,
+            tradeoffs_summary=tradeoffs,
             suggested_adjustments=adjustments,
+            sequencing_recommendations=sequencing,
+            potential_conflicts=conflicts,
             focus_strategy=strategy,
+            is_validated_deterministic=True,
         )
 
 

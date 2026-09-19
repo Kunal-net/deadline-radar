@@ -129,6 +129,11 @@ class PlanningAssistanceRequest(BaseModel):
 
 
 class PlanningAssistanceResponse(BaseModel):
+    schedule_pressure: str = "balanced"  # relaxed, balanced, high_intensity, overloaded
     advice: str
+    tradeoffs_summary: str = ""
     suggested_adjustments: List[str] = []
+    sequencing_recommendations: List[str] = []
+    potential_conflicts: List[str] = []
     focus_strategy: str
+    is_validated_deterministic: bool = True

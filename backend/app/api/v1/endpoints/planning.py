@@ -14,6 +14,7 @@ from app.schemas.plan import (
     PlanItemUpdateRequest,
     PlanResponse,
 )
+from app.services.ai.schemas import PlanningAssistanceResponse
 from app.services.planning_service import PlanningService
 
 router = APIRouter(prefix="/planning", tags=["Planning"])
@@ -55,3 +56,40 @@ async def update_plan_item(
 ) -> PlanItemResponse:
     service = PlanningService(db)
     return await service.update_plan_item(current_user.id, item_id, request)
+
+
+@router.get("/{plan_date}/ai-assist", response_model=PlanningAssistanceResponse, status_code=status.HTTP_200_OK)
+async def get_plan_ai_assist(
+    plan_date: date,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> PlanningAssistanceResponse:
+    from app.services.ai.ai_service import AIService
+    ai_service = AIService(db=db)
+    service = PlanningService(db)
+    plan_res = await service.get_plan_by_date(current_user.id, plan_date)
+    if not plan_res:
+        gen_res = await service.generate_daily_plan(
+            current_user.id, PlanGenerateRequest(target_date=plan_date.isoformat())
+        )
+        plan_res = gen_res.plan
+
+    top_items = [
+        {"id": item.id, "title": item.title, "duration_minutes": item.duration_minutes}
+        for item in plan_res.items
+    ]
+
+    avail_hours = (
+        current_user.preferences.daily_focus_capacity_hours
+        if (current_user.preferences and current_user.preferences.daily_focus_capacity_hours)
+        else 4.0
+    )
+    allocated_hours = round(plan_res.total_planned_minutes / 60.0, 1)
+
+    return await ai_service.planner_assistant.assist(
+        date=plan_date.isoformat(),
+        available_capacity_hours=avail_hours,
+        allocated_hours=allocated_hours,
+        top_items=top_items,
+        conflicts=[],
+    )

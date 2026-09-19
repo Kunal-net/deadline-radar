@@ -2,9 +2,9 @@
 
 ## Overall Status
 
-- **Current Phase**: Phase 16 Completed — Transitioning to Phase 17
-- **Completed Phases**: Phase 01 to Phase 16
-- **Remaining Phases**: Phase 17 to Phase 20
+- **Current Phase**: Phase 17 Completed — Transitioning to Phase 18
+- **Completed Phases**: Phase 01 to Phase 17
+- **Remaining Phases**: Phase 18 to Phase 20
 - **Overall Status**: In Progress (Autonomous Execution Active)
 
 ---
@@ -435,12 +435,24 @@
 ---
 
 ## Phase 17 — AI Planning Assistance
-- **Status**: Pending
-- **Date**: —
-- **Summary**: —
-- **Files**: —
-- **Tests**: —
-- **Notes**: —
+- **Status**: Completed
+- **Date**: 2026-09-20
+- **Summary**:
+  - Implemented AI Planning Assistance wrapping the authoritative deterministic daily planner (`DailyPlanner`).
+  - Evaluates schedule pressure tiers (`relaxed`, `balanced`, `high_intensity`, `overloaded`), trade-offs, priority sequencing, and potential scheduling conflicts.
+  - Strictly prevents probabilistic hallucinations: preserves protected personal interests, strictly respects calendar blackout intervals, and does not invent free capacity.
+  - Implemented REST endpoints:
+    - `POST /api/v1/ai/plan-assist`: Analyzes candidate schedule metrics and provides structured advice, focus strategies, and sequencing recommendations.
+    - `GET /api/v1/planning/{plan_date}/ai-assist`: Integrates deterministic daily plans directly into the advisory pipeline without mutating the authoritative schedule.
+  - Added comprehensive integration tests covering balanced workloads, overloaded schedule warnings, sequencing extraction, and deterministic plan linking.
+- **Files**:
+  - `backend/app/services/ai/schemas.py`
+  - `backend/app/services/ai/provider.py`
+  - `backend/app/api/v1/endpoints/ai.py`
+  - `backend/app/api/v1/endpoints/planning.py`
+  - `backend/tests/integration/test_planning_ai_assist.py`
+- **Tests**: 4 integration tests passing in `test_planning_ai_assist.py`. Total 62 tests passing across backend suite.
+- **Next Phase**: Phase 18 — AI Explanations.
 
 ---
 
