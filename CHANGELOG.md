@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Completed comprehensive System Architecture Design (`docs/architecture.md`) defining technical stack selections (FastAPI, PostgreSQL 15+, Vite/React/TS SPA), component boundaries, pluggable AI and ingestion pipelines, in-process async background worker, security models, data flows, and Architectural Decision Records (ADR-001 through ADR-007).
+- Updated development workflow roadmap (`docs/development-workflow.md`) defining phase transitions toward database design.
 - Formalized complete, implementation-ready 32-section Product Requirements Document (`docs/prd.md`) defining target personas, user journeys, MVP scope boundaries, opportunity data model, lifecycle states, in-app notifications, and testable acceptance criteria.
 - Updated project context (`docs/project-context.md`) with confirmed MVP decisions regarding notification channels, AI feature scoping, and lifecycle separation.
 - Initial project directory structure (`frontend/`, `backend/`, `ai-model/`, `docs/`, `.github/`)

@@ -5,6 +5,26 @@ This document defines the mandatory, disciplined development lifecycle for all s
 
 ---
 
+## Project Phase Roadmap
+
+The Deadline Radar repository follows a structured, documentation-driven progression:
+
+| Phase | Description | Key Artifact | Status |
+| :---: | :--- | :--- | :---: |
+| **Phase 1** | **Product Requirements Definition** | `docs/prd.md` | **COMPLETE** |
+| **Phase 2** | **System Architecture Design** | `docs/architecture.md` | **COMPLETE** |
+| **Phase 3** | **Database Schema & Data Modeling** | `docs/database-schema.md` | **NEXT PHASE** |
+| **Phase 4** | **API Contract Specification** | `docs/api-contract.md` | Pending |
+| **Phase 5** | **AI Subsystem Specification** | `docs/ai-model-spec.md` | Pending |
+| **Phase 6** | **Frontend UI/UX Specification** | `docs/frontend-spec.md` | Pending |
+| **Phase 7** | **Backend Core Implementation** | `backend/` | Pending |
+| **Phase 8** | **AI Layer Implementation** | `ai-model/` | Pending |
+| **Phase 9** | **Frontend Client Implementation** | `frontend/` | Pending |
+| **Phase 10** | **End-to-End Integration & Testing** | `tests/` | Pending |
+| **Phase 11** | **Deployment & Production Launch** | `docs/deployment.md` | Pending |
+
+---
+
 ## Mandatory AI Agent Workflow
 
 ```text
