@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 40" fill="none">
+  <!-- Minimalist, editorial radar/time graphic mark -->
+  <circle cx="20" cy="20" r="16" stroke="#1a1715" stroke-width="2.5" fill="none" />
+  <circle cx="20" cy="20" r="8" stroke="#1a1715" stroke-width="1.5" stroke-dasharray="2 2" fill="none" />
+  <line x1="20" y1="20" x2="31" y2="13" stroke="#1a1715" stroke-width="2.5" stroke-linecap="round" />
+  <circle cx="20" cy="20" r="2.5" fill="#1a1715" />
+  <!-- Confident editorial wordmark -->
+  <text x="46" y="25" font-family="'Epilogue', 'Inter', -apple-system, sans-serif" font-size="16" font-weight="700" letter-spacing="-0.03em" fill="#1a1715">Deadline Radar</text>
+</svg>
