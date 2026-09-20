@@ -596,8 +596,8 @@ export const AddWorkView: React.FC = () => {
                           {item.title}
                         </span>
                         <span className="font-label-md text-label-md text-ink-muted shrink-0">
-                          {item.deadline_utc
-                            ? new Date(item.deadline_utc).toLocaleDateString(undefined, {
+                          {item.deadlineUtc
+                            ? new Date(item.deadlineUtc).toLocaleDateString(undefined, {
                                 month: 'short',
                                 day: 'numeric',
                               })
@@ -605,9 +605,9 @@ export const AddWorkView: React.FC = () => {
                         </span>
                       </div>
                       <div className="flex items-center justify-between pt-1 font-body-md text-body-md text-ink-secondary">
-                        <span>{item.estimated_hours || 0} hrs {item.category ? item.category.toLowerCase() : 'work'}</span>
+                        <span>{item.estimatedEffortHours || 0} hrs {item.category ? item.category.toLowerCase() : 'work'}</span>
                         <span className="text-ink-primary font-medium text-[13px] bg-surface-tint px-1.5 py-0.5">
-                          {item.status === 'COMPLETED' ? 'Completed' : (item.risk_level ? `${item.risk_level} Risk` : 'Active')}
+                          {item.status === 'COMPLETED' ? 'Completed' : (item.riskLevel ? `${item.riskLevel} Risk` : 'Active')}
                         </span>
                       </div>
                     </div>
@@ -626,13 +626,13 @@ export const AddWorkView: React.FC = () => {
                       Current Workload
                     </span>
                     <span className="font-label-md text-label-md text-ink-secondary">
-                      {recentWorkItems.filter(i => i.status !== 'COMPLETED').reduce((acc, i) => acc + (i.estimated_hours || 0), 0).toFixed(1)} hrs committed
+                      {recentWorkItems.filter(i => i.status !== 'COMPLETED').reduce((acc, i) => acc + (i.estimatedEffortHours || 0), 0).toFixed(1)} hrs committed
                     </span>
                   </div>
                 </div>
                 <span className="font-headline-md text-headline-md text-ink-primary">
                   {recentWorkItems.length > 0
-                    ? `${Math.min(100, Math.round((recentWorkItems.filter(i => i.status !== 'COMPLETED').reduce((acc, i) => acc + (i.estimated_hours || 0), 0) / 35) * 100))}%`
+                    ? `${Math.min(100, Math.round((recentWorkItems.filter(i => i.status !== 'COMPLETED').reduce((acc, i) => acc + (i.estimatedEffortHours || 0), 0) / 35) * 100))}%`
                     : '0%'}
                 </span>
               </div>

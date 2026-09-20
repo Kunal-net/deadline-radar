@@ -329,8 +329,8 @@ class PlanningService:
         )
         urgent_count = len([
             i for i in urgent_items
-            if i.status not in {"completed", "cancelled"}
-            and i.risk_state in {"at_risk", "critical", "overdue"}
+            if (i.status or "").lower() not in {"completed", "cancelled"}
+            and (i.risk_state or "").lower() in {"at_risk", "critical", "overdue"}
         ])
 
         return TodayOverviewResponse(

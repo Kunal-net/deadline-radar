@@ -76,7 +76,7 @@ export const ActionablePrioritiesList: React.FC<ActionablePrioritiesListProps> =
     try {
       await updateWorkItemMutation.mutateAsync({
         id,
-        payload: { status: 'completed' },
+        payload: { status: 'COMPLETED' },
       });
     } catch (err) {
       console.warn('Could not persist priority completion:', err);

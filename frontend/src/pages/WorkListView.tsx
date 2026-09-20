@@ -296,7 +296,7 @@ export const WorkListView: React.FC = () => {
                     : 'Your ledger is completely clear. Capture your first deliverable using the intake input below or the Add Work workflow.'}
                 </p>
                 <Link
-                  to="/work/add"
+                  to="/work/new"
                   className="mt-space-xs px-space-md py-2 bg-ink-primary text-canvas-paper hover:bg-accent-terracotta transition-colors font-label-md text-label-md inline-block"
                 >
                   Structured Add Work
