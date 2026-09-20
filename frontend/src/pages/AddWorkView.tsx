@@ -314,22 +314,28 @@ export const AddWorkView: React.FC = () => {
                   {subtasks.map((st, index) => (
                     <div
                       key={st.id}
-                      onClick={() => toggleSubtask(st.id)}
-                      className="p-space-xs hover:bg-surface-cream transition-colors flex items-center justify-between border-b border-border-hairline/60 cursor-pointer"
+                      className="p-space-xs hover:bg-surface-cream transition-colors flex items-center justify-between border-b border-border-hairline/60"
                     >
-                      <div className="flex items-center gap-space-xs">
+                      <div className="flex items-center gap-space-xs flex-1">
                         <input
+                          id={`subtask-check-${st.id}`}
                           type="checkbox"
                           checked={st.checked}
-                          onChange={() => {}}
-                          className="accent-ink-primary cursor-pointer"
+                          onChange={() => toggleSubtask(st.id)}
+                          aria-label={`Include subtask: ${st.title}`}
+                          className="accent-ink-primary cursor-pointer w-4 h-4 rounded-none focus-visible:ring-1 focus-visible:ring-ink-primary"
                         />
-                        <span className="font-mono text-xs text-ink-muted">0{index + 1}.</span>
-                        <span className={`font-body-md text-body-md text-ink-primary ${!st.checked ? 'line-through text-ink-muted' : ''}`}>
-                          {st.title}
-                        </span>
+                        <label
+                          htmlFor={`subtask-check-${st.id}`}
+                          className="flex items-center gap-space-xs cursor-pointer flex-1"
+                        >
+                          <span className="font-mono text-xs text-ink-muted select-none">0{index + 1}.</span>
+                          <span className={`font-body-md text-body-md text-ink-primary ${!st.checked ? 'line-through text-ink-muted' : ''}`}>
+                            {st.title}
+                          </span>
+                        </label>
                       </div>
-                      <span className="font-mono text-xs bg-surface-cream px-2 py-0.5 text-ink-secondary border border-border-hairline shrink-0">
+                      <span className="font-mono text-xs bg-surface-cream px-2 py-0.5 text-ink-secondary border border-border-hairline shrink-0 select-none">
                         {st.duration}
                       </span>
                     </div>

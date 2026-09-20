@@ -22,7 +22,7 @@ This document tracks the sequential execution of all 20 phases from `deadline_ra
 | **Phase 12** | Insights | **Completed** | 2026-09-20 | Estimation variance, velocity, learning, anti-fake stats, early-data state |
 | **Phase 13** | Onboarding | **Completed** | 2026-09-20 | Personalization calibration flow, non-negotiable boundaries, store persistence |
 | **Phase 14** | Responsive Design | **Completed** | 2026-09-20 | Multi-device layout auditing, mobile drawer with Escape listener, Agenda/Day calendar modes |
-| **Phase 15** | Accessibility | Pending | — | WCAG AA compliance pass, keyboard nav, ARIA attributes |
+| **Phase 15** | Accessibility | **Completed** | 2026-09-20 | WCAG 2.1 AA compliance pass, keyboard nav (Enter/Space), ARIA roles, live regions |
 | **Phase 16** | Backend Integration | Pending | — | Connect to FastAPI REST API, TanStack Query, error boundaries |
 | **Phase 17** | AI UX Integration | Pending | — | Natural language parsing, decomposition preview, confidence UI |
 | **Phase 18** | Visual QA | Pending | — | Screen-by-screen Stitch visual parity comparison & fixes |
@@ -251,6 +251,27 @@ This document tracks the sequential execution of all 20 phases from `deadline_ra
   - TypeScript `tsc --noEmit`: 0 errors
   - ESLint: 0 warnings
 - **Next Phase**: Phase 15 — Accessibility
+
+---
+
+## Phase 15: Accessibility Log
+- **Date**: 2026-09-20
+- **Status**: Completed
+- **Skills Used**: `stitch-design-taste`, `high-end-visual-design`, `impeccable`, `motion`, `code-review`
+- **Files Modified/Created**:
+  - `frontend/src/pages/WorkDetailView.tsx`
+  - `frontend/src/pages/AddWorkView.tsx`
+- **Improvements & Verifications**:
+  - **Keyboard Interactivity on Custom Elements**: Converted interactive execution plan items in `WorkDetailView` to accessible `role="checkbox"` elements with `aria-checked`, `tabIndex={0}`, and `onKeyDown` listeners (supporting `Space` and `Enter` activation).
+  - **Accessible Form Elements**: In `AddWorkView`, properly associated each subtask checkbox with an explicit `<label htmlFor="...">` and descriptive `aria-label`, eliminating orphaned inputs.
+  - **Live Announcements**: Added `role="status"` and `aria-live="polite"` to time logging notifications and toast feedback banners.
+  - **Reduced-Motion Support**: Verified `@media (prefers-reduced-motion: reduce)` in `index.css` and added `motion-reduce:animate-none` to pulsing notification badges.
+  - **Color Contrast**: Verified dark ink on light cream/paper backgrounds exceeds WCAG 2.1 AA requirements ($\ge 4.5:1$ for body copy, $\ge 3:1$ for large text/icons).
+- **Validation Performed**:
+  - TypeScript `tsc --noEmit`: 0 errors
+  - ESLint: 0 warnings
+- **Next Phase**: Phase 16 — Backend Integration
+
 
 
 

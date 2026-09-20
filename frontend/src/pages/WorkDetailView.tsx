@@ -222,7 +222,17 @@ export const WorkDetailView: React.FC = () => {
                   <div
                     key={block.id}
                     onClick={() => toggleBlock(block.id)}
-                    className={`py-space-md px-space-md flex items-start justify-between gap-space-md cursor-pointer transition-colors duration-150 border ${
+                    onKeyDown={(e) => {
+                      if (e.key === ' ' || e.key === 'Enter') {
+                        e.preventDefault();
+                        toggleBlock(block.id);
+                      }
+                    }}
+                    role="checkbox"
+                    aria-checked={block.completed}
+                    tabIndex={0}
+                    aria-label={`Mark "${block.title}" as ${block.completed ? 'incomplete' : 'complete'}`}
+                    className={`py-space-md px-space-md flex items-start justify-between gap-space-md cursor-pointer transition-colors duration-150 border focus:outline-none focus-visible:ring-1 focus-visible:ring-ink-primary ${
                       block.completed
                         ? 'bg-canvas-paper border-border-hairline opacity-75'
                         : 'bg-surface-cream border-border-hairline'
@@ -341,7 +351,11 @@ export const WorkDetailView: React.FC = () => {
               </div>
 
               {toastMessage && (
-                <div className="font-label-md text-label-md text-accent-terracotta pt-space-xs font-semibold animate-pulse">
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className="font-label-md text-label-md text-accent-terracotta pt-space-xs font-semibold animate-pulse motion-reduce:animate-none"
+                >
                   {toastMessage}
                 </div>
               )}
