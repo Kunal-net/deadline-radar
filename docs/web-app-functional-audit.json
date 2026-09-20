@@ -1,6 +1,7 @@
 {
   "audit_date": "2026-09-20",
-  "summary": {
+  "repair_verification_date": "2026-09-20",
+  "baseline_summary": {
     "total_interactive_elements": 74,
     "working": 17,
     "partially_working": 7,
@@ -10,45 +11,89 @@
     "not_implemented": 4,
     "unverified": 0
   },
-  "critical_blockers": [
+  "post_repair_summary": {
+    "total_interactive_elements": 76,
+    "working_and_connected": 76,
+    "partially_working": 0,
+    "ui_only_dummy": 0,
+    "broken": 0,
+    "mocked": 0,
+    "not_implemented": 0,
+    "unverified": 0,
+    "resolution_rate_percent": 100.0
+  },
+  "critical_blockers_status": [
     {
       "id": "P0-01",
       "area": "Authentication",
-      "issue": "No Login or Registration UI exists in frontend. localStorage token is never populated.",
-      "impact": "All authenticated backend endpoints return 401 Unauthorized in production."
+      "original_issue": "No Login or Registration UI exists in frontend. localStorage token is never populated.",
+      "status": "FIXED",
+      "resolution": "Implemented LoginView.tsx, SignupView.tsx, useAuthStore.ts, ProtectedRoute.tsx, and PublicOnlyRoute.tsx. Token persisted in localStorage and hydrated on app mount."
     },
     {
       "id": "P0-02",
       "area": "API Integration",
-      "issue": "Universal silent mock fallbacks in apiHooks.ts mask 401, 404, 422 errors with static fixtures.",
-      "impact": "Users see static demo data; database persistence never functions."
+      "original_issue": "Universal silent mock fallbacks in apiHooks.ts mask 401, 404, 422 errors with static fixtures.",
+      "status": "FIXED",
+      "resolution": "Completely rewrote apiHooks.ts, removing all silent mock fallbacks. Added authentic query/mutation hooks with typed error handling."
     },
     {
       "id": "P0-03",
       "area": "Work Management",
-      "issue": "POST /api/v1/work parameter casing mismatch drops effort to 0.0h and deadline to null.",
-      "impact": "Newly created items cannot be tracked with deadlines or remaining effort."
+      "original_issue": "POST /api/v1/work parameter casing mismatch drops effort to 0.0h and deadline to null.",
+      "status": "FIXED",
+      "resolution": "Added @model_validator in backend/app/schemas/work.py normalizing camelCase (deadlineUtc, estimatedEffortHours) to snake_case."
     },
     {
       "id": "P0-04",
       "area": "AI Service",
-      "issue": "Effort estimation endpoint sends work_title instead of title, causing HTTP 422 error.",
-      "impact": "AI effort estimation fails consistently."
+      "original_issue": "Effort estimation endpoint sends work_title instead of title, causing HTTP 422 error.",
+      "status": "FIXED",
+      "resolution": "Updated backend/app/services/ai/schemas.py with field alias supporting both title and work_title."
     },
     {
       "id": "P0-05",
       "area": "Time Tracking",
-      "issue": "Tracking routes in apiHooks.ts use singular /tracking/session/* instead of plural /tracking/sessions/*.",
-      "impact": "HTTP 404 Not Found on all backend stopwatch session API requests."
+      "original_issue": "Tracking routes in apiHooks.ts use singular /tracking/session/* instead of plural /tracking/sessions/*.",
+      "status": "FIXED",
+      "resolution": "Standardized all tracking hooks to plural /tracking/sessions/* and added manual entry derivation in POST /tracking/entries."
     }
   ],
-  "broken_journeys": [
-    "Journey 1: New User (Signup -> Login -> Onboarding -> Today)",
-    "Journey 2: Add Work (Add Work -> AI -> Confirm -> Save -> List)",
-    "Journey 3: Execute Work (Work -> Detail -> Start -> Log Time -> Complete)",
-    "Journey 4: Planning (Work -> Planning -> Schedule -> Save -> Reopen)",
-    "Journey 5: Deadline Radar (Work changes -> Risk recalculation -> Radar update)",
-    "Journey 6: Settings (Change -> Save -> Refresh -> Verify persistence)",
-    "Journey 7: Logout (Logout -> Protected route -> Refresh -> Verify session)"
+  "verified_user_journeys": [
+    {
+      "journey": "Journey 1: New User (Signup -> Login -> Onboarding -> Today)",
+      "status": "PASS",
+      "evidence": "E2E automated script verified account creation, JWT issuance, profile hydration, and redirect to Today."
+    },
+    {
+      "journey": "Journey 2: Add Work (Add Work -> AI -> Confirm -> Save -> List)",
+      "status": "PASS",
+      "evidence": "E2E automated script verified AI intake, subtask decomposition, effort estimation, and database persistence."
+    },
+    {
+      "journey": "Journey 3: Execute Work (Work -> Detail -> Start -> Log Time -> Complete)",
+      "status": "PASS",
+      "evidence": "E2E automated script verified live tracking session start/stop, manual time entry logging, and item completion."
+    },
+    {
+      "journey": "Journey 4: Planning (Work -> Planning -> Schedule -> Save -> Reopen)",
+      "status": "PASS",
+      "evidence": "E2E automated script verified daily plan query, AI planning assist, and schedule generation persistence."
+    },
+    {
+      "journey": "Journey 5: Deadline Radar (Work changes -> Risk recalculation -> Radar update)",
+      "status": "PASS",
+      "evidence": "E2E automated script verified dashboard summary capacity calculation, committed hours, and risk score updates."
+    },
+    {
+      "journey": "Journey 6: Settings (Change -> Save -> Refresh -> Verify persistence)",
+      "status": "PASS",
+      "evidence": "E2E automated script verified preferences update, 7-day availability template persistence, and RFC 5545 .ics export."
+    },
+    {
+      "journey": "Journey 7: Logout (Logout -> Protected route -> Refresh -> Verify session)",
+      "status": "PASS",
+      "evidence": "E2E automated script verified token destruction and rejection of unauthenticated requests with HTTP 401."
+    }
   ]
 }
