@@ -1,0 +1,54 @@
+{
+  "audit_date": "2026-09-20",
+  "summary": {
+    "total_interactive_elements": 74,
+    "working": 17,
+    "partially_working": 7,
+    "ui_only_dummy": 28,
+    "broken": 11,
+    "mocked": 7,
+    "not_implemented": 4,
+    "unverified": 0
+  },
+  "critical_blockers": [
+    {
+      "id": "P0-01",
+      "area": "Authentication",
+      "issue": "No Login or Registration UI exists in frontend. localStorage token is never populated.",
+      "impact": "All authenticated backend endpoints return 401 Unauthorized in production."
+    },
+    {
+      "id": "P0-02",
+      "area": "API Integration",
+      "issue": "Universal silent mock fallbacks in apiHooks.ts mask 401, 404, 422 errors with static fixtures.",
+      "impact": "Users see static demo data; database persistence never functions."
+    },
+    {
+      "id": "P0-03",
+      "area": "Work Management",
+      "issue": "POST /api/v1/work parameter casing mismatch drops effort to 0.0h and deadline to null.",
+      "impact": "Newly created items cannot be tracked with deadlines or remaining effort."
+    },
+    {
+      "id": "P0-04",
+      "area": "AI Service",
+      "issue": "Effort estimation endpoint sends work_title instead of title, causing HTTP 422 error.",
+      "impact": "AI effort estimation fails consistently."
+    },
+    {
+      "id": "P0-05",
+      "area": "Time Tracking",
+      "issue": "Tracking routes in apiHooks.ts use singular /tracking/session/* instead of plural /tracking/sessions/*.",
+      "impact": "HTTP 404 Not Found on all backend stopwatch session API requests."
+    }
+  ],
+  "broken_journeys": [
+    "Journey 1: New User (Signup -> Login -> Onboarding -> Today)",
+    "Journey 2: Add Work (Add Work -> AI -> Confirm -> Save -> List)",
+    "Journey 3: Execute Work (Work -> Detail -> Start -> Log Time -> Complete)",
+    "Journey 4: Planning (Work -> Planning -> Schedule -> Save -> Reopen)",
+    "Journey 5: Deadline Radar (Work changes -> Risk recalculation -> Radar update)",
+    "Journey 6: Settings (Change -> Save -> Refresh -> Verify persistence)",
+    "Journey 7: Logout (Logout -> Protected route -> Refresh -> Verify session)"
+  ]
+}
