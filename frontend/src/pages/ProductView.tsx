@@ -1,12 +1,30 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../store/useAuthStore';
 
 export const ProductView: React.FC = () => {
   const navigate = useNavigate();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const [intentInput, setIntentInput] = useState(
     'Submit NSF grant proposal draft next Tuesday 4pm requiring 5.5 hours'
   );
+  const [parsedEffort, setParsedEffort] = useState<string>('5.5h Net');
+  const [parsedDeadline, setParsedDeadline] = useState<string>('Tue · 16:00');
   const [evaluated, setEvaluated] = useState(true);
+
+  const handleEvaluateIntent = () => {
+    const matchEffort = intentInput.match(/(\d+(?:\.\d+)?)\s*(?:hour|hr|h)/i);
+    const matchTime = intentInput.match(/(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)/i);
+    if (matchEffort) {
+      setParsedEffort(`${matchEffort[1]}h Net`);
+    } else {
+      setParsedEffort('3.0h Estimated');
+    }
+    if (matchTime) {
+      setParsedDeadline(`Target · ${matchTime[1]}`);
+    }
+    setEvaluated(true);
+  };
 
   return (
     <div className="min-h-screen bg-surface font-body-md text-body-md text-ink-primary antialiased">
@@ -55,20 +73,24 @@ export const ProductView: React.FC = () => {
 
           <div className="flex items-center gap-space-xs sm:gap-space-md">
             <Link
-              to="/today"
+              to={isAuthenticated ? '/today' : '/login'}
               className="hidden sm:inline-block font-label-lg text-label-lg text-ink-secondary hover:text-ink-primary transition-colors"
             >
-              Sign In
+              {isAuthenticated ? 'Workspace' : 'Sign In'}
             </Link>
             <button
-              onClick={() => navigate('/onboarding')}
+              onClick={() => navigate(isAuthenticated ? '/today' : '/signup')}
               className="px-space-sm sm:px-space-lg py-space-xs sm:py-space-sm bg-ink-primary text-canvas-paper font-label-lg text-label-lg rounded-none hover:bg-accent-terracotta transition-colors inline-flex items-center justify-center whitespace-nowrap"
             >
               Open Radar
             </button>
-            <div className="w-8 h-8 rounded-none bg-ink-primary text-canvas-paper flex items-center justify-center border border-border-hairline shrink-0">
+            <Link
+              to={isAuthenticated ? '/settings' : '/login'}
+              aria-label="User Profile"
+              className="w-8 h-8 rounded-none bg-ink-primary text-canvas-paper flex items-center justify-center border border-border-hairline shrink-0 hover:bg-accent-terracotta transition-colors"
+            >
               <span className="material-symbols-outlined text-[18px]">person</span>
-            </div>
+            </Link>
           </div>
         </div>
       </header>

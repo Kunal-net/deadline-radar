@@ -32,6 +32,9 @@ export async function apiRequest<T>(
   });
 
   if (!response.ok) {
+    if (response.status === 401 && token) {
+      localStorage.removeItem('deadline_radar_token');
+    }
     let errorData: { error?: { code?: string; message?: string; details?: unknown } } = {};
     try {
       errorData = await response.json();
