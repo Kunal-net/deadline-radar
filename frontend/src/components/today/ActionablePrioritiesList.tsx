@@ -13,7 +13,22 @@ export interface PriorityItem {
   workDetailId?: string;
 }
 
+import { WorkItem } from '../../services/apiTypes';
+
+export interface PriorityItem {
+  id: string;
+  orderNumber: string;
+  title: string;
+  description: string;
+  dueText: string;
+  dueUrgency: 'alert' | 'normal' | 'muted';
+  remainingEffort: string;
+  actionType: 'focus' | 'open' | 'done';
+  workDetailId?: string;
+}
+
 export interface ActionablePrioritiesListProps {
+  items?: WorkItem[];
   onStartFocus: (title: string, workItemId?: string) => void;
 }
 
@@ -57,9 +72,40 @@ const DEFAULT_PRIORITIES: PriorityItem[] = [
 ];
 
 export const ActionablePrioritiesList: React.FC<ActionablePrioritiesListProps> = ({
+  items,
   onStartFocus,
 }) => {
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
+
+  const activePriorities: PriorityItem[] =
+    items && items.length > 0
+      ? items
+          .filter((w) => w.status?.toLowerCase() !== 'completed')
+          .slice(0, 5)
+          .map((item, idx) => ({
+            id: item.id,
+            orderNumber: String(idx + 1).padStart(2, '0'),
+            title: item.title,
+            description:
+              item.description ||
+              `Commitment ranked at dynamic priority ${item.dynamicPriorityScore?.toFixed(1) || '50'}.`,
+            dueText: item.deadlineUtc
+              ? `Due ${new Date(item.deadlineUtc).toLocaleDateString(undefined, {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                })}`
+              : 'Open timeline',
+            dueUrgency: (item.riskLevel === 'CRITICAL'
+              ? 'alert'
+              : item.riskLevel === 'WATCH'
+              ? 'normal'
+              : 'muted') as 'alert' | 'normal' | 'muted',
+            remainingEffort: `${item.remainingEffortHours || 0}h remaining`,
+            actionType: (idx === 0 ? 'focus' : 'open') as 'focus' | 'open' | 'done',
+            workDetailId: item.id,
+          }))
+      : DEFAULT_PRIORITIES;
 
   const toggleComplete = (id: string) => {
     setCompletedIds((prev) => {
@@ -99,7 +145,7 @@ export const ActionablePrioritiesList: React.FC<ActionablePrioritiesListProps> =
 
         {/* Editorial Open List */}
         <div className="flex flex-col w-full">
-          {DEFAULT_PRIORITIES.map((item) => {
+          {activePriorities.map((item) => {
             const isCompleted = completedIds.has(item.id);
 
             return (
