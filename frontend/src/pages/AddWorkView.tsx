@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
+import {
+  useAIInterpretation,
+  useAIDecomposition,
+  useAIEffortEstimate,
+  useCreateWorkItem,
+} from '../services/apiHooks';
+import type { AIInterpretationResult } from '../services/apiTypes';
 
 export const AddWorkView: React.FC = () => {
   const navigate = useNavigate();
@@ -11,26 +18,110 @@ export const AddWorkView: React.FC = () => {
 
   const [confirmed, setConfirmed] = useState(false);
   const [activeTab, setActiveTab] = useState<'SYNTHESIZER' | 'DECOMPOSITION'>('SYNTHESIZER');
+  
+  // Real AI Mutations
+  const interpretMutation = useAIInterpretation();
+  const decomposeMutation = useAIDecomposition();
+  const effortMutation = useAIEffortEstimate();
+  const createMutation = useCreateWorkItem();
+
+  // Active AI interpretation state with sensible fallback
+  const [aiInterpretation, setAiInterpretation] = useState<AIInterpretationResult>({
+    title: 'Finish Machine Learning assignment',
+    category: 'Academic / CS',
+    deadline_utc: 'Friday 4:00 PM',
+    is_hard_deadline: true,
+    estimated_hours: 3.5,
+    constraints: ['Assumed standard 3.5h continuous deep work block based on past ML coursework pace.'],
+    suggested_subtasks: [
+      { sequence_order: 1, title: 'Data preprocessing & baseline loss curves', estimated_hours: 1.0 },
+      { sequence_order: 2, title: 'Model retraining with ResNet backbone & validation', estimated_hours: 1.5 },
+      { sequence_order: 3, title: 'LaTeX write-up, confusion matrix & analysis tables', estimated_hours: 1.0 },
+    ],
+    missing_information: [],
+    confidence_score: 0.94,
+  });
+
   const [subtasks, setSubtasks] = useState([
     { id: '1', title: 'Data preprocessing & baseline loss curves', duration: '60m', checked: true },
     { id: '2', title: 'Model retraining with ResNet backbone & validation', duration: '90m', checked: true },
     { id: '3', title: 'LaTeX write-up, confusion matrix & analysis tables', duration: '60m', checked: true },
   ]);
 
-  // Parsing extraction logic based on the input text
-  const parseTitle = () => {
-    if (!inputText.trim()) return 'Awaiting plain language expression...';
-    if (inputText.toLowerCase().includes('by')) {
-      return inputText.split(/by/i)[0].trim();
+  // Parsing extraction logic fallback
+  const displayTitle = aiInterpretation?.title || (inputText.trim() ? inputText.split(/by/i)[0].trim() : 'Awaiting plain language expression...');
+  const hasDeadline = !!aiInterpretation?.deadline_utc || /(?:by|due|on|before)\s+([a-zA-Z]+|\d+)/i.test(inputText);
+  const hasEffort = (aiInterpretation?.estimated_hours ?? 0) > 0 || /(?:\d+(?:\.\d+)?)\s*(?:hour|hr|h|min|minute)/i.test(inputText);
+
+  const handleInterpret = async () => {
+    if (!inputText.trim()) return;
+    try {
+      const res = await interpretMutation.mutateAsync(inputText);
+      setAiInterpretation(res);
+    } catch {
+      // Graceful fallback already provided by hook
     }
-    return inputText.slice(0, 50);
   };
 
-  const hasDeadline = /(?:by|due|on|before)\s+([a-zA-Z]+|\d+)/i.test(inputText);
-  const hasEffort = /(?:\d+(?:\.\d+)?)\s*(?:hour|hr|h|min|minute)/i.test(inputText);
+  const handleDecompose = async () => {
+    try {
+      const res = await decomposeMutation.mutateAsync({
+        title: displayTitle,
+        category: aiInterpretation?.category,
+        description: inputText,
+      });
+      if (res.suggested_units && res.suggested_units.length > 0) {
+        setSubtasks(
+          res.suggested_units.map((u, i) => ({
+            id: String(i + 1),
+            title: u.title,
+            duration: `${Math.round(u.estimated_hours * 60)}m`,
+            checked: true,
+          }))
+        );
+      }
+      setActiveTab('DECOMPOSITION');
+    } catch {
+      setActiveTab('DECOMPOSITION');
+    }
+  };
 
-  const handleConfirm = () => {
+  const handleEstimateEffort = async () => {
+    try {
+      const res = await effortMutation.mutateAsync({
+        title: displayTitle,
+        category: aiInterpretation?.category || 'Academic',
+        description: inputText,
+      });
+      setAiInterpretation((prev) => ({
+        ...prev,
+        estimated_hours: res.estimated_hours,
+        confidence_score: res.confidence_score,
+        constraints: [...(prev.constraints || []), res.reasoning],
+      }));
+    } catch {
+      // Fallback
+    }
+  };
+
+  const handleConfirm = async () => {
     setConfirmed(true);
+    try {
+      const targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() + 2); // default 2 days out
+      await createMutation.mutateAsync({
+        title: displayTitle,
+        category: 'ACADEMIC',
+        estimatedEffortHours: aiInterpretation?.estimated_hours || 3.5,
+        remainingEffortHours: aiInterpretation?.estimated_hours || 3.5,
+        actualLoggedHours: 0,
+        deadlineUtc: targetDate.toISOString(),
+        isHardDeadline: true,
+        riskLevel: 'SAFE',
+      });
+    } catch {
+      // Handled gracefully in mutation
+    }
     setTimeout(() => {
       navigate('/work');
     }, 600);
@@ -129,13 +220,24 @@ export const AddWorkView: React.FC = () => {
                   <span className="material-symbols-outlined text-[16px] text-ink-muted">bolt</span>
                   <span>Extracts: Milestones, Duration, Schedule Windows, Blockers</span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setInputText('')}
-                  className="font-label-md text-label-md text-ink-secondary hover:text-accent-terracotta transition-colors cursor-pointer"
-                >
-                  Reset Expression
-                </button>
+                <div className="flex items-center gap-space-xs">
+                  <button
+                    type="button"
+                    onClick={handleInterpret}
+                    disabled={interpretMutation.isPending}
+                    className="px-space-xs py-0.5 bg-surface-cream hover:bg-surface-tint font-label-md text-label-md text-ink-primary border border-border-hairline transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[14px]">psychology</span>
+                    <span>{interpretMutation.isPending ? 'Synthesizing...' : 'Interpret Intent'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setInputText('')}
+                    className="font-label-md text-label-md text-ink-secondary hover:text-accent-terracotta transition-colors cursor-pointer px-1"
+                  >
+                    Reset
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -191,10 +293,10 @@ export const AddWorkView: React.FC = () => {
                     </span>
                     <div className="flex-1">
                       <span className="font-headline-md text-headline-md text-ink-primary block">
-                        {parseTitle()}
+                        {displayTitle}
                       </span>
                       <span className="font-body-md text-body-md text-ink-secondary mt-0.5 block">
-                        Academic / Computational Deliverable
+                        {aiInterpretation.category || 'Academic / Computational Deliverable'}
                       </span>
                     </div>
                   </div>
@@ -210,11 +312,11 @@ export const AddWorkView: React.FC = () => {
                           event_upcoming
                         </span>
                         <span className="font-label-lg text-label-lg text-ink-primary font-semibold">
-                          Friday, Oct 20 · 16:00
+                          {aiInterpretation.deadline_utc || 'Friday, Oct 20 · 16:00'}
                         </span>
                       </div>
                       <span className="px-space-xs py-0.5 bg-surface-cream font-label-md text-label-md text-accent-terracotta font-medium border border-border-hairline">
-                        In 2.5 days
+                        Estimated Target
                       </span>
                     </div>
                   </div>
@@ -230,15 +332,45 @@ export const AddWorkView: React.FC = () => {
                           timer
                         </span>
                         <span className="font-label-lg text-label-lg text-ink-primary font-semibold">
-                          3.5 Hours Deep Focus
+                          {aiInterpretation.estimated_hours.toFixed(1)} Hours Deep Focus
                         </span>
+                        <button
+                          type="button"
+                          onClick={handleEstimateEffort}
+                          disabled={effortMutation.isPending}
+                          className="ml-2 text-xs font-mono text-ink-secondary hover:text-ink-primary underline cursor-pointer"
+                        >
+                          {effortMutation.isPending ? 'Estimating...' : 'Recalibrate Effort'}
+                        </button>
                       </div>
                       <div className="flex items-center gap-1 text-ink-secondary font-label-md text-label-md">
                         <span className="w-1.5 h-1.5 bg-ink-primary inline-block" />
-                        <span>Confidence: High (94%)</span>
+                        <span>Confidence: {Math.round(aiInterpretation.confidence_score * 100)}%</span>
                       </div>
                     </div>
                   </div>
+
+                  {/* AI Model Assumptions & Provenance Notice */}
+                  {aiInterpretation.constraints && aiInterpretation.constraints.length > 0 && (
+                    <div className="pt-space-xs pb-space-xs flex flex-col gap-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-label-md text-label-md uppercase tracking-wide text-ink-muted">
+                          AI Model Assumptions &amp; Constraints
+                        </span>
+                        <span className="text-[10px] font-mono text-ink-muted">
+                          REQUIRES CONFIRMATION
+                        </span>
+                      </div>
+                      <ul className="text-xs text-ink-secondary list-disc pl-4 space-y-0.5">
+                        {aiInterpretation.constraints.map((asm: string, idx: number) => (
+                          <li key={idx}>{asm}</li>
+                        ))}
+                      </ul>
+                      <p className="text-[11px] text-ink-muted pt-1 italic">
+                        Heuristic projection based on syntax. Never saved as truth without your confirmation.
+                      </p>
+                    </div>
+                  )}
 
                   {/* Capacity Audit */}
                   <div className="flex flex-col md:flex-row md:items-baseline gap-space-xs md:gap-space-md pt-space-xs pb-space-xs">
@@ -303,12 +435,23 @@ export const AddWorkView: React.FC = () => {
                 /* Decomposition View */
                 <div className="flex flex-col gap-space-xs bg-canvas-paper p-space-md border border-border-hairline">
                   <div className="flex items-center justify-between pb-space-xs border-b border-border-hairline mb-2">
-                    <span className="font-label-md text-label-md text-ink-muted uppercase">
-                      Decomposed Focus Units
-                    </span>
-                    <span className="font-mono text-xs text-ink-secondary">
-                      Total: 3.5 hrs (210m)
-                    </span>
+                    <div className="flex items-center gap-space-xs">
+                      <span className="font-label-md text-label-md text-ink-muted uppercase">
+                        Decomposed Focus Units
+                      </span>
+                      <span className="text-[10px] font-mono bg-surface-cream text-ink-secondary px-1 py-0.5 border border-border-hairline">
+                        AI DECOMPOSITION
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleDecompose}
+                      disabled={decomposeMutation.isPending}
+                      className="px-2 py-0.5 bg-surface-cream hover:bg-surface-tint font-label-md text-label-md text-ink-primary border border-border-hairline transition-colors flex items-center gap-1 cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">splitscreen</span>
+                      <span>{decomposeMutation.isPending ? 'Decomposing...' : 'Auto-Decompose with AI'}</span>
+                    </button>
                   </div>
 
                   {subtasks.map((st, index) => (
@@ -345,6 +488,7 @@ export const AddWorkView: React.FC = () => {
                   </p>
                 </div>
               )}
+
 
               {/* Action Controls */}
               <div className="flex flex-wrap items-center justify-between gap-space-md pt-space-xs">

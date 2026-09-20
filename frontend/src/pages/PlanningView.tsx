@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { SubNavigation } from '../components/layout/SubNavigation';
 import { MOCK_CAPACITY_METRIC } from '../mocks/mockData';
+import { usePlanAIAssist } from '../services/apiHooks';
 
 export const PlanningView: React.FC = () => {
   const [naturalAdjustment, setNaturalAdjustment] = useState('');
   const [adjustmentToast, setAdjustmentToast] = useState<string | null>(null);
+
+  const { data: aiPlanAssist } = usePlanAIAssist();
 
   const handleAdjust = (e: React.FormEvent) => {
     e.preventDefault();
@@ -443,9 +446,45 @@ export const PlanningView: React.FC = () => {
         </div>
       </section>
 
-      {/* Dynamic Calibration field */}
+      {/* Dynamic Calibration & AI Schedule Advisory */}
       <section className="w-full px-margin-mobile md:px-margin-tablet lg:px-margin pt-space-md pb-space-2xl bg-surface-cream/50 border-t border-border-hairline mt-auto">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-7xl mx-auto flex flex-col gap-space-md">
+          {/* AI Advisory Callout */}
+          {aiPlanAssist && (
+            <div className="max-w-4xl p-space-md bg-canvas-paper border border-border-hairline flex flex-col gap-space-xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-space-xs">
+                  <span className="w-1.5 h-1.5 bg-accent-terracotta inline-block" />
+                  <span className="font-label-md text-label-md uppercase tracking-wider text-ink-muted">
+                    AI Schedule Advisory
+                  </span>
+                  <span className="text-[10px] font-mono bg-surface-cream text-accent-terracotta px-1 py-0.5 border border-border-hairline ml-1">
+                    AI INTERPRETATION
+                  </span>
+                </div>
+                <span className="px-2 py-0.5 bg-surface-cream font-label-md text-label-md text-ink-primary font-mono border border-border-hairline capitalize">
+                  Load: {aiPlanAssist.pressure_tier}
+                </span>
+              </div>
+
+              <p className="font-body-md text-body-md text-ink-primary font-medium">
+                {aiPlanAssist.pace_advisory}
+              </p>
+
+              {aiPlanAssist.recommendations && aiPlanAssist.recommendations.length > 0 && (
+                <ul className="text-xs text-ink-secondary list-disc pl-4 space-y-1 pt-1">
+                  {aiPlanAssist.recommendations.map((rec: string, idx: number) => (
+                    <li key={idx}>{rec}</li>
+                  ))}
+                </ul>
+              )}
+
+              <span className="text-[11px] text-ink-muted italic pt-1">
+                Heuristic optimization proposal. You maintain complete calendar authority.
+              </span>
+            </div>
+          )}
+
           <form onSubmit={handleAdjust} className="max-w-4xl flex flex-col gap-space-xs">
             <div className="flex items-center gap-space-xs mb-space-xs">
               <span className="w-1.5 h-1.5 bg-accent-terracotta inline-block" />

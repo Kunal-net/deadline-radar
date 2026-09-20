@@ -4,14 +4,19 @@ import { SubNavigation } from '../components/layout/SubNavigation';
 import { Button } from '../components/ui/Button';
 import { MOCK_WORK_ITEMS } from '../mocks/mockData';
 import { useAppStore } from '../store/useAppStore';
+import { useWorkItem, useWorkExplanation } from '../services/apiHooks';
 
 export const WorkDetailView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { startSession } = useAppStore();
 
-  const item =
+  const { data: serverItem } = useWorkItem(id);
+  const fallbackItem =
     MOCK_WORK_ITEMS.find((w) => w.id === id) ||
-    MOCK_WORK_ITEMS[0]; // fallback to first item
+    MOCK_WORK_ITEMS[0];
+  const item = serverItem || fallbackItem;
+
+  const { data: explanation } = useWorkExplanation(item.id);
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [actualHours, setActualHours] = useState(item.actualLoggedHours || 3.0);
@@ -404,31 +409,62 @@ export const WorkDetailView: React.FC = () => {
               </div>
             </div>
 
-            {/* Velocity Intelligence Note */}
+            {/* AI Risk Explanation & Intelligence */}
             <div className="bg-canvas-paper p-space-md flex flex-col gap-space-sm border border-border-hairline">
-              <span className="font-label-md text-label-md text-ink-muted uppercase tracking-widest">
-                Capacity &amp; Velocity Intelligence
-              </span>
+              <div className="flex items-center justify-between pb-1 border-b border-border-hairline">
+                <div className="flex items-center gap-space-xs">
+                  <span className="w-1.5 h-1.5 bg-accent-terracotta inline-block" />
+                  <span className="font-label-md text-label-md text-ink-muted uppercase tracking-widest">
+                    AI Risk Explanation
+                  </span>
+                </div>
+                <span className="text-[10px] font-mono bg-surface-cream text-accent-terracotta px-1 py-0.5 border border-border-hairline">
+                  AI INTERPRETATION
+                </span>
+              </div>
+
               <p className="font-body-md text-body-md text-ink-primary font-medium">
-                Historical Pace: 1.1x estimate factor
-              </p>
-              <p className="font-body-md text-body-md text-ink-secondary">
-                Your typical variance on CS assignments exhibits a 10% drift. The remaining 3.0h
-                block includes a calibrated 45-minute safety reserve prior to Friday 17:00,
-                safeguarding your buffer against unforeseen compute queue delays.
+                {explanation?.summary ||
+                  'Nominal effort exceeds currently available calendar focus capacity before Friday evening.'}
               </p>
 
-              <div className="pt-space-xs flex flex-col gap-1">
+              {explanation?.contributing_factors && explanation.contributing_factors.length > 0 && (
+                <div className="pt-1">
+                  <span className="font-label-md text-label-md text-ink-muted uppercase tracking-wider block mb-1">
+                    Contributing Factors
+                  </span>
+                  <ul className="text-xs text-ink-secondary list-disc pl-4 space-y-1">
+                    {explanation.contributing_factors.map((factor, idx) => (
+                      <li key={idx}>{factor}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {explanation?.mitigations && explanation.mitigations.length > 0 && (
+                <div className="pt-1 bg-surface-cream p-2 border border-border-hairline">
+                  <span className="font-label-md text-label-md text-ink-primary font-semibold block mb-1">
+                    Suggested Mitigations
+                  </span>
+                  <ul className="text-xs text-ink-secondary list-disc pl-4 space-y-0.5">
+                    {explanation.mitigations.map((mit, idx) => (
+                      <li key={idx}>{mit}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="pt-space-xs flex flex-col gap-1 border-t border-border-hairline">
                 <div className="flex justify-between font-label-md text-label-md text-ink-muted">
-                  <span>Time Committed: 3.0h</span>
-                  <span>Available Horizon: 28.5h</span>
+                  <span>Capacity Horizon: 28.5h</span>
+                  <span>Estimate Drift: 1.1x</span>
                 </div>
                 <div className="w-full h-1.5 bg-surface-cream flex overflow-hidden">
                   <div className="h-full bg-ink-primary" style={{ width: '50%' }} />
                   <div className="h-full bg-accent-terracotta" style={{ width: '15%' }} />
                 </div>
-                <span className="font-label-md text-label-md text-ink-muted pt-0.5">
-                  Ratio: 10.5% of total remaining week hours
+                <span className="font-label-md text-label-md text-ink-muted pt-0.5 italic text-[11px]">
+                  Heuristic projection based on telemetry. Not an absolute guarantee.
                 </span>
               </div>
             </div>

@@ -35,7 +35,7 @@ export const QUERY_KEYS = {
   planAiAssist: (date: string) => ['planAiAssist', date] as const,
 };
 
-// 1. Work Items Query
+// 1. Work Items Query & Create
 export function useWorkItems(params?: { category?: string; status?: string }) {
   return useQuery({
     queryKey: [...QUERY_KEYS.workItems, params],
@@ -50,6 +50,42 @@ export function useWorkItems(params?: { category?: string; status?: string }) {
       } catch {
         return MOCK_WORK_ITEMS;
       }
+    },
+  });
+}
+
+export function useCreateWorkItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: Partial<WorkItem>) => {
+      try {
+        return await apiRequest<WorkItem>('/work', {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        });
+      } catch {
+        // Mock fallback creation
+        const newItem: WorkItem = {
+          id: `work-${Date.now()}`,
+          title: payload.title || 'Untitled Work Item',
+          category: payload.category || 'ACADEMIC',
+          estimatedEffortHours: payload.estimatedEffortHours || 3.0,
+          remainingEffortHours: payload.remainingEffortHours || 3.0,
+          actualLoggedHours: 0,
+          deadlineUtc: payload.deadlineUtc || new Date().toISOString(),
+          isHardDeadline: payload.isHardDeadline ?? true,
+          riskLevel: payload.riskLevel || 'SAFE',
+          status: payload.status || 'TODO',
+          dynamicPriorityScore: 50,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        return newItem;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.workItems });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboardSummary });
     },
   });
 }

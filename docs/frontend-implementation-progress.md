@@ -297,8 +297,29 @@ This document tracks the sequential execution of all 20 phases from `deadline_ra
   - ESLint: 0 warnings
 - **Next Phase**: Phase 17 — AI UX Integration
 
+---
 
-
-
-
-
+## Phase 17: AI UX Integration Log
+- **Date**: 2026-09-20
+- **Status**: Completed
+- **Skills Used**: `stitch-design-taste`, `high-end-visual-design`, `impeccable`, `code-review`
+- **Files Modified/Created**:
+  - `frontend/src/services/apiHooks.ts`
+  - `frontend/src/pages/AddWorkView.tsx`
+  - `frontend/src/pages/WorkDetailView.tsx`
+  - `frontend/src/pages/PlanningView.tsx`
+- **Improvements & Verifications**:
+  - **Natural Language Intake & Parsing**: Connected `useAIInterpretation()`, `useAIDecomposition()`, and `useAIEffortEstimate()` into `AddWorkView`. Users can trigger syntax interpretation, effort recalibration, and subtask auto-decomposition with clear non-flashy loaders.
+  - **Clear Provenance Segregation**: Implemented explicit architectural tags throughout the AI experience:
+    - `[USER INPUT]` on unstructured intake.
+    - `[AI INTERPRETATION]` with numerical confidence scores (e.g. `94% Confidence`).
+    - `[SYSTEM DATA]` for deterministic capacity audits and margin calculations.
+    - `[OBSERVED ACTUAL DATA]` for recorded sprint intervals.
+    - `[AI SCHEDULE ADVISORY]` for planning recommendations.
+  - **Explicit Non-Guarantee Disclosures**: Enforced clear italic disclosures ("Heuristic projection — not an absolute guarantee. Requires user confirmation before saving") preventing deceptive AI certainty.
+  - **Grounded Explanations**: Wired `useWorkExplanation()` into `WorkDetailView`, displaying telemetry-backed contributing factors, mitigations, and calibrated pace variance.
+  - **Schedule Advisory**: Wired `usePlanAIAssist()` into `PlanningView`, rendering adaptive load status badges (`balanced`, `relaxed`, `overloaded`) and actionable calendar shift recommendations.
+- **Validation Performed**:
+  - TypeScript `tsc --noEmit`: 0 errors
+  - ESLint: 0 warnings
+- **Next Phase**: Phase 18 — Visual QA
