@@ -1,0 +1,5 @@
+{"id": "interp_001", "input_text": "Need to submit Machine Learning Assignment 4 by next Friday 5pm. Worth 15% of grade.", "expected_category": "academic", "has_deadline": true}
+{"id": "interp_002", "input_text": "Read chapter 4 and 5 of Operating Systems textbook sometime this week.", "expected_category": "academic", "has_deadline": false}
+{"id": "interp_003", "input_text": "Prepare presentation slides for Q3 backend architecture review on October 24th at 2pm.", "expected_category": "project", "has_deadline": true}
+{"id": "interp_004", "input_text": "Fix broken unit tests in payment gateway service before deployment tomorrow morning.", "expected_category": "project", "has_deadline": true}
+{"id": "interp_005", "input_text": "Apply for Google STEP internship program before application window closes on Nov 1st.", "expected_category": "career", "has_deadline": true}

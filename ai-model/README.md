@@ -1,37 +1,67 @@
 # AI & Intelligence Subsystem — Deadline Radar
 
-## Purpose
-The `ai-model/` directory houses the prompt templates, evaluation datasets, benchmark test suites, and provider integrations for **Deadline Radar**. It delivers modular intelligence to assist users in understanding work complexity, breaking large projects into actionable units, estimating initial baseline effort, and detecting missing information.
+## Architectural Relationship: Production vs. Evaluation Laboratory
 
-## Core Responsibilities
-- **Natural Language Work Parsing**: Extracting structured work item titles, descriptions, categories, and target deadlines from freeform text.
-- **Work Item Decomposition**: Decomposing complex tasks into 3 to 8 sequential, manageable work units sized between 30 minutes and 3 hours.
-- **Baseline Effort Estimation**: Providing initial hour estimates with confidence bounds for novel tasks where no user history exists.
-- **Missing Information Detection**: Flagging ambiguous requirements (e.g. unstated rubrics, dataset sizes, submission formatting rules).
-- **Evaluation Suite**: Running automated benchmarking suites against test prompt datasets (`tests/eval_decomposition.jsonl`) to guarantee 100% Pydantic schema adherence.
+The AI capabilities in **Deadline Radar** are split between the **live production application runtime** and this **offline evaluation & prompt laboratory**:
 
-## Critical Architectural Boundary: Generative vs. Deterministic
-The AI subsystem strictly enforces the distinction between generative reasoning and deterministic mathematics:
+```
+deadline-radar/
+├── backend/app/services/ai/         # 1. PRODUCTION RUNTIME ENGINE
+│   ├── ai_service.py                # Master AIService facade
+│   ├── provider.py                  # Pluggable BaseAIProvider, Gemini, Claude, Mock
+│   ├── schemas.py                   # Pydantic v2 schemas for all AI outputs
+│   ├── work_interpreter.py          # Natural language intake parsing
+│   ├── work_decomposer.py           # Multi-step atomic task decomposition
+│   ├── effort_estimator.py          # Calibrated effort & complexity sizing
+│   ├── explainer.py                 # Grounded risk & priority explanations
+│   ├── planner_assistant.py         # Schedule advisory & rebalancing tips
+│   └── personalization_service.py   # Closed-loop pace factor tracking (EMA)
+│
+└── ai-model/                        # 2. PROMPT & EVALUATION LABORATORY (This folder)
+    ├── prompts/                     # Versioned prompt engineering templates
+    │   └── templates.py
+    ├── eval_datasets/               # Benchmark JSONL test datasets
+    │   ├── eval_decomposition.jsonl
+    │   └── eval_interpretation.jsonl
+    ├── tests/                       # Pytest benchmark evaluation suite
+    │   └── test_decomposition_eval.py
+    └── run_eval.py                  # CLI benchmark evaluation runner
+```
 
-- **Generative AI Tasks (LLM)**: Semantic parsing, task decomposition, and heuristic sizing.
-- **Deterministic Math (Python/SQL)**: Deadline risk ratio ($R = E_r / H_a$), dynamic priority scores ($S$), and empirical pace factor learning ($P_{t} = 0.2 \cdot \text{Ratio} + 0.8 \cdot P_{t-1}$). **LLMs are never permitted to calculate risk or priority scores.**
+---
 
-## Model Serving & Provider Abstractions
-- Decoupled from the backend API via a pluggable provider interface (`AIServiceInterface`).
-- Supported providers:
-  1. **Google Gemini** (`gemini-1.5-flash` / `gemini-1.5-pro`) via Google GenAI SDK with structured JSON outputs.
-  2. **Anthropic Claude** (`claude-3-5-haiku` / `claude-3-5-sonnet`) via Anthropic SDK.
-  3. **OpenAI** (`gpt-4o-mini` / `gpt-4o`) with strict JSON schema enforcement.
-  4. **MockAIService**: Deterministic local stub for unit tests, offline development, and CI/CD pipelines (zero API cost, zero network latency).
+## Why Is the Production AI Code in `backend/app/services/ai/`?
 
-## Evaluation & Benchmarks
-- Automated evaluation runs in CI:
-  - **Schema Validation Pass Rate**: Must be 100% Pydantic compliant.
-  - **Subtask Plausibility**: Verified to produce between 3 and 8 units with durations between 0.5h and 3.0h.
-  - **Resilience**: Verified to fall back gracefully to manual input when provider times out or errors.
+In accordance with the **modular monolith** architecture established in `docs/architecture.md` and the master execution prompts:
+1. **Direct FastAPI Routing**: All AI endpoints (`POST /api/v1/ai/interpret`, `POST /api/v1/ai/decompose`, `POST /api/v1/ai/estimate-effort`, `POST /api/v1/ai/explain`, `GET /api/v1/planning/{date}/ai-assist`, `GET /api/v1/insights/summary`) depend directly on dependency injection from [`backend/app/api/deps.py`](../backend/app/api/deps.py).
+2. **Database & Telemetry Coupling**: Personalization (`PersonalizationService`) requires access to real historical time tracking records (`TimeEntry`, `WorkItem`, `UserPaceFactor`) via SQLAlchemy async sessions to calibrate pace factors without circular dependencies.
+3. **Deterministic Isolation (Rule #3)**: The backend domain engines ([`risk_engine.py`](../backend/app/domain/risk_engine.py), [`priority_engine.py`](../backend/app/domain/priority_engine.py), [`planner.py`](../backend/app/domain/planner.py)) execute pure arithmetic, while `backend/app/services/ai/` handles semantic reasoning.
 
-## Relevant Documentation
-- [AI Model Specification](../docs/ai-model-spec.md)
-- [Architecture Overview](../docs/architecture.md)
-- [API Contract](../docs/api-contract.md)
-- [Development Workflow](../docs/development-workflow.md)
+---
+
+## What Lives in `ai-model/`?
+
+This directory serves as the dedicated offline evaluation harness:
+
+1. **Prompt Templates (`prompts/templates.py`)**:
+   - Centralized, versioned prompt definitions for task interpretation, decomposition, estimation, and telemetry-grounded explanations.
+2. **Evaluation Datasets (`eval_datasets/`)**:
+   - `eval_decomposition.jsonl`: Benchmark test tasks with expected unit counts (3 to 8 subtasks) and duration bounds (0.5h to 3.0h).
+   - `eval_interpretation.jsonl`: Freeform natural language intake test cases across diverse categories.
+3. **Automated Benchmark Tests (`tests/test_decomposition_eval.py`)**:
+   - Verifies 100% Pydantic schema validation pass rate.
+   - Asserts subtask plausibility and duration limits.
+4. **CLI Evaluation Runner (`run_eval.py`)**:
+   - Standalone CLI utility to measure pass rates, unit counts, and schema compliance across providers.
+
+---
+
+## Running AI Benchmarks
+
+```bash
+# Run CLI benchmark runner
+backend/venv/bin/python ai-model/run_eval.py
+
+# Run pytest evaluation suite
+PYTHONPATH=backend backend/venv/bin/pytest ai-model/tests/test_decomposition_eval.py -v
+```
