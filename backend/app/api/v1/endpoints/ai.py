@@ -190,16 +190,17 @@ async def estimate_work_effort(
     if payload.historical_observations_count and payload.historical_observations_count > obs_count:
         obs_count = payload.historical_observations_count
 
+    effective_title = payload.effective_title
     logger.info(
         "Estimating effort for '%s' (user_id=%s, obs_count=%d, pace_factor=%.2f)",
-        payload.title,
+        effective_title,
         current_user.id,
         obs_count,
         pace_factor,
     )
 
     return await ai_service.effort_estimator.estimate(
-        title=payload.title,
+        title=effective_title,
         category=payload.category,
         complexity=payload.complexity or "moderate",
         description=payload.description,

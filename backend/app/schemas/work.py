@@ -2,14 +2,25 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import List, Optional
-from pydantic import Field, computed_field
+from pydantic import Field, computed_field, model_validator
 from app.schemas.common import AppBaseModel, PaginatedResponse
+from typing import Any, Dict
 
 
 class InitialUnitCreate(AppBaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
     estimated_hours: float = Field(default=1.0, ge=0.1, le=100.0)
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_unit(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "estimatedHours" in data and "estimated_hours" not in data:
+                data["estimated_hours"] = data["estimatedHours"]
+            elif "estimatedMinutes" in data and "estimated_hours" not in data:
+                data["estimated_hours"] = max(0.1, round(float(data["estimatedMinutes"]) / 60.0, 2))
+        return data
 
 
 class WorkItemCreateRequest(AppBaseModel):
@@ -22,6 +33,22 @@ class WorkItemCreateRequest(AppBaseModel):
     estimated_hours: float = Field(default=0.0, ge=0.0)
     initial_units: Optional[List[InitialUnitCreate]] = Field(None, alias="units")
 
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_create(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "deadlineUtc" in data and "deadline_utc" not in data and "deadline" not in data:
+                data["deadline_utc"] = data["deadlineUtc"]
+            if "isHardDeadline" in data and "is_hard_deadline" not in data:
+                data["is_hard_deadline"] = data["isHardDeadline"]
+            if "estimatedEffortHours" in data and "estimated_hours" not in data:
+                data["estimated_hours"] = data["estimatedEffortHours"]
+            if "estimatedHours" in data and "estimated_hours" not in data:
+                data["estimated_hours"] = data["estimatedHours"]
+            if "initialUnits" in data and "initial_units" not in data and "units" not in data:
+                data["initial_units"] = data["initialUnits"]
+        return data
+
 
 class WorkItemUpdateRequest(AppBaseModel):
     title: Optional[str] = Field(None, min_length=1, max_length=255)
@@ -33,6 +60,26 @@ class WorkItemUpdateRequest(AppBaseModel):
     status: Optional[str] = None
     total_estimated_hours: Optional[float] = Field(None, ge=0.0)
     remaining_estimated_hours: Optional[float] = Field(None, ge=0.0)
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_update(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "deadlineUtc" in data and "deadline_utc" not in data:
+                data["deadline_utc"] = data["deadlineUtc"]
+            if "isHardDeadline" in data and "is_hard_deadline" not in data:
+                data["is_hard_deadline"] = data["isHardDeadline"]
+            if "importanceWeight" in data and "importance_weight" not in data:
+                data["importance_weight"] = data["importanceWeight"]
+            if "estimatedEffortHours" in data and "total_estimated_hours" not in data:
+                data["total_estimated_hours"] = data["estimatedEffortHours"]
+            if "totalEstimatedHours" in data and "total_estimated_hours" not in data:
+                data["total_estimated_hours"] = data["totalEstimatedHours"]
+            if "remainingEffortHours" in data and "remaining_estimated_hours" not in data:
+                data["remaining_estimated_hours"] = data["remainingEffortHours"]
+            if "remainingEstimatedHours" in data and "remaining_estimated_hours" not in data:
+                data["remaining_estimated_hours"] = data["remainingEstimatedHours"]
+        return data
 
 
 class WorkUnitCreateRequest(AppBaseModel):

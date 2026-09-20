@@ -89,3 +89,70 @@ async def delete_block(
     service = AvailabilityService(db)
     await service.delete_block(current_user.id, block_id)
     return None
+
+
+@router.get(
+    "/export.ics",
+    summary="Export calendar commitments and deadlines as an iCalendar file",
+)
+async def export_calendar_ics(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from fastapi.responses import Response
+    from app.repositories.work_repo import WorkItemRepository
+
+    avail_service = AvailabilityService(db)
+    blocks_res = await avail_service.list_blocks(current_user.id)
+    blocks = blocks_res.blocks
+    work_repo = WorkItemRepository(db)
+    items, _ = await work_repo.list_work_items(current_user.id, limit=100)
+
+    lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Deadline Radar//EN",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+        "X-WR-CALNAME:Deadline Radar Schedule",
+    ]
+
+    for b in blocks:
+        start_clean = b.start_time.replace("-", "").replace(":", "").replace("+0000", "Z")
+        if "T" not in start_clean:
+            start_clean += "T000000Z"
+        end_clean = b.end_time.replace("-", "").replace(":", "").replace("+0000", "Z")
+        if "T" not in end_clean:
+            end_clean += "T000000Z"
+        lines.extend([
+            "BEGIN:VEVENT",
+            f"UID:block-{b.id}@deadlineradar",
+            f"SUMMARY:{b.title}",
+            f"DTSTART:{start_clean}",
+            f"DTEND:{end_clean}",
+            f"DESCRIPTION:Block type: {b.block_type}",
+            "END:VEVENT",
+        ])
+
+    for w in items:
+        if w.deadline_utc:
+            dt_str = w.deadline_utc.strftime("%Y%m%dT%H%M%SZ")
+            lines.extend([
+                "BEGIN:VEVENT",
+                f"UID:work-{w.id}@deadlineradar",
+                f"SUMMARY:DEADLINE: {w.title}",
+                f"DTSTART:{dt_str}",
+                f"DTEND:{dt_str}",
+                f"DESCRIPTION:Category: {w.category} | Remaining: {w.remaining_estimated_hours}h | Risk: {w.risk_state}",
+                "END:VEVENT",
+            ])
+
+    lines.append("END:VCALENDAR")
+    ics_body = "\r\n".join(lines) + "\r\n"
+
+    return Response(
+        content=ics_body,
+        media_type="text/calendar",
+        headers={"Content-Disposition": "attachment; filename=deadline_radar.ics"},
+    )
+

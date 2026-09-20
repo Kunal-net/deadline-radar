@@ -34,7 +34,7 @@ interface AuthState {
   clearError: () => void;
 }
 
-export const useAuthStore = create<AuthState>((set, get) => ({
+export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   token: localStorage.getItem('deadline_radar_token'),
   isAuthenticated: !!localStorage.getItem('deadline_radar_token'),

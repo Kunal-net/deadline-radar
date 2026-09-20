@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 
 class PlanItemResponse(BaseModel):
@@ -16,6 +16,30 @@ class PlanItemResponse(BaseModel):
     status: str
     is_protected: bool = False
     notes: Optional[str] = None
+
+    @computed_field
+    def startTime(self) -> str:
+        if self.planned_start:
+            return self.planned_start.split("T")[-1][:5] if "T" in self.planned_start else self.planned_start[:5]
+        return "09:00"
+
+    @computed_field
+    def endTime(self) -> str:
+        if self.planned_end:
+            return self.planned_end.split("T")[-1][:5] if "T" in self.planned_end else self.planned_end[:5]
+        return "10:30"
+
+    @computed_field
+    def durationHours(self) -> float:
+        return round(self.duration_minutes / 60.0, 1)
+
+    @computed_field
+    def workItemId(self) -> Optional[str]:
+        return self.work_item_id
+
+    @computed_field
+    def isProtected(self) -> bool:
+        return self.is_protected
 
 
 class PlanResponse(BaseModel):
@@ -60,3 +84,33 @@ class TodayOverviewResponse(BaseModel):
     day_capacity_hours: float = 0.0
     day_allocated_hours: float = 0.0
     today_plan_items: List[PlanItemResponse] = []
+
+    @computed_field
+    def dateDisplay(self) -> str:
+        try:
+            from datetime import date as d_cls
+            dt = d_cls.fromisoformat(self.date)
+            return dt.strftime("%A, %b %d, %Y")
+        except Exception:
+            return self.date
+
+    @computed_field
+    def issueNumber(self) -> str:
+        return "N° 042"
+
+    @computed_field
+    def availableFocusHours(self) -> float:
+        return self.day_capacity_hours
+
+    @computed_field
+    def deadlinesCount(self) -> int:
+        return self.urgent_deadlines_count
+
+    @computed_field
+    def maxFocusLimitHours(self) -> float:
+        return max(6.0, round(self.day_capacity_hours * 1.25, 1))
+
+    @computed_field
+    def planItems(self) -> List[PlanItemResponse]:
+        return self.today_plan_items
+

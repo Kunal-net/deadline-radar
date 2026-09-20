@@ -653,7 +653,7 @@ export const ProductView: React.FC = () => {
                     value={intentInput}
                     onChange={(e) => {
                       setIntentInput(e.target.value);
-                      setEvaluated(true);
+                      handleEvaluateIntent();
                     }}
                     placeholder="Type your deadline and duration..."
                     className="w-full bg-transparent font-headline-md text-headline-md text-ink-primary outline-none pb-space-xs placeholder:text-ink-muted border-b border-border-hairline"
@@ -663,10 +663,10 @@ export const ProductView: React.FC = () => {
                 <div className="pt-space-sm flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm">
                   <div className="flex flex-wrap items-center gap-space-sm font-mono text-label-md">
                     <span className="bg-surface-cream px-2 py-1 text-ink-primary font-medium">
-                      Target: Tue · 16:00
+                      {parsedDeadline}
                     </span>
                     <span className="bg-surface-cream px-2 py-1 text-ink-primary font-medium">
-                      Effort: 5.5h Net
+                      Effort: {parsedEffort}
                     </span>
                     <span className="text-accent-terracotta font-bold flex items-center gap-1">
                       <span className="w-1.5 h-1.5 bg-accent-terracotta inline-block shrink-0" />
@@ -675,7 +675,7 @@ export const ProductView: React.FC = () => {
                   </div>
                   <button
                     type="button"
-                    onClick={() => setEvaluated(true)}
+                    onClick={handleEvaluateIntent}
                     className="px-space-md py-2 bg-ink-primary text-canvas-paper font-label-md text-label-md hover:bg-accent-terracotta transition-colors"
                   >
                     {evaluated ? 'Parsed Deterministically' : 'Evaluate Fit'}

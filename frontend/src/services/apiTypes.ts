@@ -177,3 +177,66 @@ export interface InsightsSummary {
   pace_factors: Record<string, number>;
   is_early_data: boolean;
 }
+
+export interface UserPreferences {
+  id?: string;
+  user_id?: string;
+  timezone: string;
+  daily_focus_capacity_hours: number;
+  buffer_percentage: number;
+  preferred_work_chunk_minutes: number;
+  min_break_minutes: number;
+  remind_risk_escalation: boolean;
+  remind_7_days: boolean;
+  remind_3_days: boolean;
+  remind_1_day: boolean;
+  morning_plan_briefing: boolean;
+  briefing_time: string;
+  ai_assistance_enabled: boolean;
+  theme: string;
+}
+
+export interface AvailabilityTemplate {
+  id?: string;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  is_available: boolean;
+  capacity_hours: number;
+}
+
+export interface ScheduleBlock {
+  id: string;
+  title: string;
+  block_type: string;
+  interest_id?: string;
+  start_time: string;
+  end_time: string;
+  is_blackout: boolean;
+}
+
+export interface PlanItem {
+  id: string;
+  work_item_id?: string;
+  work_unit_id?: string;
+  title: string;
+  planned_start?: string;
+  planned_end?: string;
+  duration_minutes: number;
+  sequence_order: number;
+  status: string;
+  is_protected?: boolean;
+  notes?: string;
+  startTime?: string;
+  endTime?: string;
+  durationHours?: number;
+}
+
+export interface DailyPlan {
+  id: string;
+  plan_date: string;
+  total_planned_minutes: number;
+  total_completed_minutes: number;
+  is_finalized: boolean;
+  items: PlanItem[];
+}

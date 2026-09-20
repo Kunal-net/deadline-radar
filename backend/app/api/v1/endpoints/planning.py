@@ -30,18 +30,28 @@ async def generate_plan(
     return await service.generate_daily_plan(current_user.id, request)
 
 
+def _parse_plan_date(d_str: str) -> date:
+    if d_str.lower() in ("today", "current"):
+        return date.today()
+    try:
+        return date.fromisoformat(d_str.split("T")[0])
+    except Exception:
+        return date.today()
+
+
 @router.get("/{plan_date}", response_model=PlanResponse, status_code=status.HTTP_200_OK)
 async def get_plan(
-    plan_date: date,
+    plan_date: str,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> PlanResponse:
+    target_d = _parse_plan_date(plan_date)
     service = PlanningService(db)
-    res = await service.get_plan_by_date(current_user.id, plan_date)
+    res = await service.get_plan_by_date(current_user.id, target_d)
     if not res:
         # If no plan exists, generate one automatically for target date
         gen_res = await service.generate_daily_plan(
-            current_user.id, PlanGenerateRequest(target_date=plan_date.isoformat())
+            current_user.id, PlanGenerateRequest(target_date=target_d.isoformat())
         )
         return gen_res.plan
     return res
@@ -60,17 +70,18 @@ async def update_plan_item(
 
 @router.get("/{plan_date}/ai-assist", response_model=PlanningAssistanceResponse, status_code=status.HTTP_200_OK)
 async def get_plan_ai_assist(
-    plan_date: date,
+    plan_date: str,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> PlanningAssistanceResponse:
+    target_d = _parse_plan_date(plan_date)
     from app.services.ai.ai_service import AIService
     ai_service = AIService(db=db)
     service = PlanningService(db)
-    plan_res = await service.get_plan_by_date(current_user.id, plan_date)
+    plan_res = await service.get_plan_by_date(current_user.id, target_d)
     if not plan_res:
         gen_res = await service.generate_daily_plan(
-            current_user.id, PlanGenerateRequest(target_date=plan_date.isoformat())
+            current_user.id, PlanGenerateRequest(target_date=target_d.isoformat())
         )
         plan_res = gen_res.plan
 
@@ -87,9 +98,10 @@ async def get_plan_ai_assist(
     allocated_hours = round(plan_res.total_planned_minutes / 60.0, 1)
 
     return await ai_service.planner_assistant.assist(
-        date=plan_date.isoformat(),
+        date=target_d.isoformat(),
         available_capacity_hours=avail_hours,
         allocated_hours=allocated_hours,
         top_items=top_items,
         conflicts=[],
     )
+
