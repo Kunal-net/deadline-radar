@@ -5,9 +5,12 @@ import { ApproachingDeadlinesList } from '../components/radar/ApproachingDeadlin
 import { FeasibilityIntake } from '../components/radar/FeasibilityIntake';
 import { MOCK_CAPACITY_METRIC } from '../mocks/mockData';
 import { useAppStore } from '../store/useAppStore';
+import { useDashboardSummary } from '../services/apiHooks';
 
 export const RadarView: React.FC = () => {
   const { startSession } = useAppStore();
+  const { data: summary } = useDashboardSummary();
+  const metric = summary?.capacityMetric || MOCK_CAPACITY_METRIC;
 
   const handleStartFocus = (title: string, id: string) => {
     startSession(title, id);
@@ -16,10 +19,10 @@ export const RadarView: React.FC = () => {
   return (
     <div className="w-full flex flex-col">
       {/* SECTION 1: EDITORIAL HERO & ASYMMETRIC VISUAL SPLIT */}
-      <RadarHero metric={MOCK_CAPACITY_METRIC} />
+      <RadarHero metric={metric} />
 
       {/* SECTION 2: THE REALITY CHECK / HORIZON CAPACITY BALANCE */}
-      <CapacityBalancePlate metric={MOCK_CAPACITY_METRIC} />
+      <CapacityBalancePlate metric={metric} />
 
       {/* SECTION 3: EDITORIAL DEADLINE HORIZON (OPEN LIST) */}
       <ApproachingDeadlinesList onStartFocus={handleStartFocus} />

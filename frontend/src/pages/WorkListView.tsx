@@ -4,12 +4,17 @@ import { SubNavigation } from '../components/layout/SubNavigation';
 import { MOCK_WORK_ITEMS, MOCK_CAPACITY_METRIC } from '../mocks/mockData';
 import { WorkItem } from '../services/apiTypes';
 import { useAppStore } from '../store/useAppStore';
+import { useWorkItems } from '../services/apiHooks';
 
 export const WorkListView: React.FC = () => {
   const navigate = useNavigate();
   const { startSession } = useAppStore();
   const [naturalInput, setNaturalInput] = useState('');
-  const [items, setItems] = useState<WorkItem[]>(MOCK_WORK_ITEMS);
+  const { data: fetchedItems } = useWorkItems();
+  const [localItems, setLocalItems] = useState<WorkItem[]>([]);
+  const items = useMemo(() => {
+    return [...localItems, ...(fetchedItems || MOCK_WORK_ITEMS)];
+  }, [localItems, fetchedItems]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('ALL');
   const [sortBy, setSortBy] = useState<'DEADLINE' | 'PRIORITY' | 'EFFORT'>('DEADLINE');
@@ -78,7 +83,7 @@ export const WorkListView: React.FC = () => {
       updatedAt: new Date().toISOString(),
     };
 
-    setItems((prev) => [newItem, ...prev]);
+    setLocalItems((prev) => [newItem, ...prev]);
     setNaturalInput('');
     setFeedbackNotice(`Appended "${trimmed}" (${parsedEffort}h remaining) to active commitments.`);
     setTimeout(() => setFeedbackNotice(null), 4000);
