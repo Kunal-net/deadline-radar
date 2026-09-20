@@ -77,12 +77,16 @@ export const AddWorkView: React.FC = () => {
     }
   };
 
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
   const handleEstimateEffort = async () => {
+    setErrorMessage(null);
     try {
       const res = await effortMutation.mutateAsync({
         title: displayTitle,
         category: aiInterpretation?.category || 'Academic',
         description: inputText,
+        units_count: subtasks.length > 0 ? subtasks.length : undefined,
       });
       setAiInterpretation((prev) => ({
         ...prev,
@@ -90,12 +94,12 @@ export const AddWorkView: React.FC = () => {
         confidence_score: res.confidence_score,
         constraints: [...(prev.constraints || []), res.reasoning],
       }));
-    } catch {
-      // Fallback
+    } catch (err: any) {
+      setErrorMessage(
+        err?.message || 'Failed to estimate calibrated effort. Please check server AI configuration.'
+      );
     }
   };
-
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleConfirm = async () => {
     setErrorMessage(null);
@@ -361,11 +365,16 @@ export const AddWorkView: React.FC = () => {
                         </span>
                         <button
                           type="button"
+                          id="estimate-calibrated-effort-btn"
                           onClick={handleEstimateEffort}
                           disabled={effortMutation.isPending}
                           className="ml-2 text-xs font-mono text-ink-secondary hover:text-ink-primary underline cursor-pointer"
                         >
-                          {effortMutation.isPending ? 'Estimating...' : 'Recalibrate Effort'}
+                          {effortMutation.isPending
+                            ? 'Estimating...'
+                            : aiInterpretation.estimated_hours > 0
+                            ? 'Recalibrate Effort'
+                            : 'Estimate Calibrated Effort'}
                         </button>
                       </div>
                       <div className="flex items-center gap-1 text-ink-secondary font-label-md text-label-md">

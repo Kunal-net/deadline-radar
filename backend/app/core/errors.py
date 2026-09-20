@@ -43,6 +43,51 @@ class ForbiddenException(AppException):
         super().__init__(message=message, code=code, status_code=status.HTTP_403_FORBIDDEN)
 
 
+class AIConfigurationException(AppException):
+    def __init__(
+        self,
+        message: str = "AI provider is not configured. Missing API key or configuration.",
+        code: str = "AI_CONFIG_ERROR",
+    ):
+        super().__init__(message=message, code=code, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class AIServiceUnavailableException(AppException):
+    def __init__(
+        self,
+        message: str = "AI provider service is temporarily unavailable. Please retry shortly.",
+        code: str = "AI_SERVICE_UNAVAILABLE",
+    ):
+        super().__init__(message=message, code=code, status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+
+class AIRateLimitException(AppException):
+    def __init__(
+        self,
+        message: str = "AI provider rate limit reached. Please wait a moment before retrying.",
+        code: str = "AI_RATE_LIMIT",
+    ):
+        super().__init__(message=message, code=code, status_code=status.HTTP_429_TOO_MANY_REQUESTS)
+
+
+class AITimeoutException(AppException):
+    def __init__(
+        self,
+        message: str = "AI provider request timed out. Please retry.",
+        code: str = "AI_TIMEOUT",
+    ):
+        super().__init__(message=message, code=code, status_code=status.HTTP_504_GATEWAY_TIMEOUT)
+
+
+class AIValidationException(AppException):
+    def __init__(
+        self,
+        message: str = "AI provider returned an invalid or unparseable structured response.",
+        code: str = "AI_MALFORMED_RESPONSE",
+    ):
+        super().__init__(message=message, code=code, status_code=status.HTTP_502_BAD_GATEWAY)
+
+
 def make_error_response(
     status_code: int,
     code: str,

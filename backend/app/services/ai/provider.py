@@ -10,6 +10,13 @@ import httpx
 from pydantic import BaseModel
 
 from app.core.config import settings
+from app.core.errors import (
+    AIConfigurationException,
+    AIRateLimitException,
+    AIServiceUnavailableException,
+    AITimeoutException,
+    AIValidationException,
+)
 from app.services.ai.schemas import (
     DecompositionRequest,
     DecompositionResponse,
@@ -18,6 +25,7 @@ from app.services.ai.schemas import (
     ExplanationRequest,
     ExplanationResponse,
     ExtractedSubtask,
+    GeminiEffortExtraction,
     PlanningAssistanceRequest,
     PlanningAssistanceResponse,
     SuggestedUnit,
@@ -420,82 +428,246 @@ class MockAIProvider(BaseAIProvider):
 
 class GeminiProvider(BaseAIProvider):
     """
-    Google Gemini AI Provider with robust schema generation and automatic Mock fallback.
+    Google Gemini AI Provider with robust schema generation, real model calls,
+    strict error classification, and deterministic domain calculations.
+    Zero silent mock fallbacks: errors surface clearly to callers.
     """
 
-    def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or settings.GEMINI_API_KEY
-        self.fallback = MockAIProvider()
+    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
+        self.api_key = api_key or settings.effective_gemini_api_key
+        self.model = model or settings.GEMINI_MODEL
 
-    async def interpret_work(self, request: WorkInterpretationRequest) -> WorkInterpretationResponse:
+    async def _call_gemini(
+        self, prompt: str, system_instruction: Optional[str] = None
+    ) -> Dict[str, Any]:
         if not self.api_key:
-            return await self.fallback.interpret_work(request)
-        try:
-            # Live call with strict timeout
-            async with httpx.AsyncClient(timeout=settings.AI_TIMEOUT_SECONDS) as client:
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={self.api_key}"
-                prompt = (
-                    f"Extract work parameters from this natural language text: '{request.text}'. "
-                    f"Context date is: {request.context_date or 'today'}. "
-                    "Respond with a strict JSON object matching: "
-                    "title, description, category, deadline_utc, is_hard_deadline, estimated_hours, "
-                    "deliverable, constraints (list), suggested_subtasks (list with sequence_order, title, estimated_hours), "
-                    "missing_information (list), confidence_score (float)."
-                )
-                payload = {
-                    "contents": [{"parts": [{"text": prompt}]}],
-                    "generationConfig": {"response_mime_type": "application/json"},
-                }
-                resp = await client.post(url, json=payload)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    raw_text = data["candidates"][0]["content"]["parts"][0]["text"]
-                    parsed = json.loads(raw_text)
-                    return WorkInterpretationResponse(**parsed)
-        except Exception as e:
-            logger.warning(f"Gemini API request failed, falling back to heuristic engine: {e}")
+            raise AIConfigurationException(
+                "Google Gemini API key is not configured. Supply GEMINI_API_KEY or GOOGLE_API_KEY in server environment."
+            )
 
-        return await self.fallback.interpret_work(request)
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.api_key}"
+        payload: Dict[str, Any] = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "response_mime_type": "application/json",
+                "temperature": 0.2,
+            },
+        }
+        if system_instruction:
+            payload["systemInstruction"] = {"parts": [{"text": system_instruction}]}
 
-    async def decompose_work(self, request: DecompositionRequest) -> DecompositionResponse:
-        if not self.api_key:
-            return await self.fallback.decompose_work(request)
         try:
             async with httpx.AsyncClient(timeout=settings.AI_TIMEOUT_SECONDS) as client:
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={self.api_key}"
-                prompt = (
-                    f"Decompose work item '{request.effective_title}' (Category: {request.category}, Total: {request.estimated_hours}h) "
-                    "into 3-5 sequential work units with title, description, and estimated_hours. "
-                    "Respond in JSON matching: suggested_units (list), total_estimated_hours, confidence_score, decomposition_notes."
-                )
-                payload = {
-                    "contents": [{"parts": [{"text": prompt}]}],
-                    "generationConfig": {"response_mime_type": "application/json"},
-                }
                 resp = await client.post(url, json=payload)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    raw_text = data["candidates"][0]["content"]["parts"][0]["text"]
-                    parsed = json.loads(raw_text)
-                    return DecompositionResponse(**parsed)
-        except Exception as e:
-            logger.warning(f"Gemini API decomposition failed, falling back: {e}")
+        except httpx.TimeoutException:
+            raise AITimeoutException(
+                f"Google Gemini model request timed out after {settings.AI_TIMEOUT_SECONDS}s."
+            )
+        except httpx.RequestError as e:
+            raise AIServiceUnavailableException(
+                f"Failed to communicate with Google Gemini service: {e}"
+            )
 
-        return await self.fallback.decompose_work(request)
+        if resp.status_code == 400:
+            err_text = resp.text
+            if "API_KEY_INVALID" in err_text or "key not valid" in err_text.lower():
+                raise AIConfigurationException("Google Gemini API key is invalid or rejected.")
+            raise AIValidationException(f"Google Gemini request rejected (HTTP 400): {err_text[:200]}")
+        elif resp.status_code in (401, 403):
+            raise AIConfigurationException("Google Gemini authorization failed. Verify API key permissions.")
+        elif resp.status_code == 429:
+            raise AIRateLimitException("Google Gemini rate limit reached. Please wait a moment and retry.")
+        elif resp.status_code >= 500:
+            raise AIServiceUnavailableException(f"Google Gemini service error (HTTP {resp.status_code}).")
+        elif resp.status_code != 200:
+            raise AIServiceUnavailableException(f"Google Gemini unexpected error (HTTP {resp.status_code}).")
+
+        try:
+            data = resp.json()
+            candidates = data.get("candidates", [])
+            if not candidates:
+                raise AIValidationException("Google Gemini returned empty candidate list.")
+            parts = candidates[0].get("content", {}).get("parts", [])
+            if not parts or "text" not in parts[0]:
+                raise AIValidationException("Google Gemini response candidate missing text content.")
+            raw_text = parts[0]["text"].strip()
+            return json.loads(raw_text)
+        except (json.JSONDecodeError, KeyError, IndexError) as e:
+            raise AIValidationException(f"Failed to parse structured JSON from Gemini response: {e}")
 
     async def estimate_effort(self, request: EffortEstimationRequest) -> EffortEstimationResponse:
-        return await self.fallback.estimate_effort(request)
+        system_instruction = (
+            "You are Deadline Radar's calibrated effort estimation advisor. "
+            "Estimate realistic focused completion hours for tasks based on academic, professional, or engineering domain norms. "
+            "Return valid JSON only matching the requested schema. Never claim estimates are absolute guarantees."
+        )
+        prompt = (
+            f"Estimate the focused effort required for this work item:\n"
+            f"Title: {request.effective_title}\n"
+            f"Category: {request.category}\n"
+            f"Complexity tier: {request.complexity or 'moderate'}\n"
+            f"Description / Notes: {request.description or 'None provided'}\n"
+            f"Subtask count: {request.units_count or 'Unspecified'}\n\n"
+            "Return a strict JSON object with these exact keys:\n"
+            "- baseline_estimated_hours (float, realistic nominal hours, e.g. 3.5, strictly > 0)\n"
+            "- confidence_score (float between 0.1 and 0.99, e.g. 0.78)\n"
+            "- confidence_level (string: 'low', 'medium', or 'high')\n"
+            "- major_factors (list of 2-4 strings highlighting specific difficulty drivers, dependencies, or scope uncertainties)\n"
+            "- estimation_rationale (concise 1-2 sentence explanation of why this duration is appropriate)\n"
+            "- complexity_rating (string: 'simple', 'moderate', 'complex', or 'massive')\n"
+        )
+
+        raw_json = await self._call_gemini(prompt, system_instruction=system_instruction)
+        try:
+            parsed = GeminiEffortExtraction(**raw_json)
+        except Exception as e:
+            raise AIValidationException(f"Gemini effort estimate response failed schema validation: {e}")
+
+        # Deterministic calculations: apply pace factor and calculate uncertainty intervals
+        baseline = round(parsed.baseline_estimated_hours, 1)
+        has_sufficient_data = (request.historical_observations_count or 0) >= 3
+        is_personalized = bool(has_sufficient_data and request.user_pace_factor and request.user_pace_factor > 0)
+        pace = request.user_pace_factor if is_personalized else 1.0
+        adjusted = round(baseline * pace, 1)
+
+        min_hours = max(0.5, round(adjusted * 0.75, 1))
+        max_hours = round(adjusted * 1.35, 1)
+        likely_range = f"{min_hours:.1f}h – {max_hours:.1f}h"
+
+        major_factors = list(parsed.major_factors)
+        if is_personalized:
+            major_factors.append(
+                f"Personalized pace factor of {pace:.2f}x applied from {request.historical_observations_count} historical observations."
+            )
+        else:
+            major_factors.append("Cold-start baseline applied (insufficient personal historical observations).")
+
+        explanation = (
+            f"Estimated {adjusted:.1f}h deep focus (likely range {likely_range}, confidence: {parsed.confidence_level}). "
+            f"{parsed.estimation_rationale} Predictions are probabilistic estimates, not guarantees."
+        )
+
+        return EffortEstimationResponse(
+            baseline_estimated_hours=baseline,
+            user_pace_factor=round(pace, 2),
+            adjusted_estimated_hours=adjusted,
+            min_expected_hours=min_hours,
+            max_expected_hours=max_hours,
+            likely_range=likely_range,
+            confidence_score=round(parsed.confidence_score, 2),
+            confidence_level=parsed.confidence_level,
+            major_factors=major_factors,
+            estimation_source="google_gemini_calibrated",
+            model_metadata=f"Google-{self.model}-v1.0",
+            estimation_rationale=parsed.estimation_rationale,
+            explanation=explanation,
+            is_personalized=is_personalized,
+            is_guarantee=False,
+        )
+
+    async def interpret_work(self, request: WorkInterpretationRequest) -> WorkInterpretationResponse:
+        system_instruction = (
+            "You are Deadline Radar's semantic work intake parser. "
+            "Extract structured work metadata from freeform user notes. "
+            "Return ONLY valid JSON matching the WorkInterpretationResponse schema. NEVER fabricate false certainty."
+        )
+        prompt = (
+            f"Extract work parameters from this natural language text: '{request.text}'. "
+            f"Context date is: {request.context_date or 'today'}. "
+            "Respond with a strict JSON object matching: "
+            "title (string), description (optional string), category (academic, project, exam_prep, career, administrative, personal), "
+            "deadline_utc (ISO 8601 UTC timestamp or null), is_hard_deadline (boolean), estimated_hours (float > 0), "
+            "deliverable (optional string), constraints (list of strings), "
+            "suggested_subtasks (list with sequence_order, title, estimated_hours), "
+            "missing_information (list of strings), confidence_score (float between 0.1 and 1.0)."
+        )
+        raw_json = await self._call_gemini(prompt, system_instruction=system_instruction)
+        try:
+            return WorkInterpretationResponse(**raw_json)
+        except Exception as e:
+            raise AIValidationException(f"Gemini interpretation response failed schema validation: {e}")
+
+    async def decompose_work(self, request: DecompositionRequest) -> DecompositionResponse:
+        system_instruction = (
+            "You are Deadline Radar's task decomposition specialist. "
+            "Break complex work items into 3 to 8 sequential, manageable atomic subtasks sized between 0.5h and 3.0h. "
+            "Return valid JSON only."
+        )
+        prompt = (
+            f"Decompose work item '{request.effective_title}' (Category: {request.category}, Total: {request.estimated_hours}h) "
+            "into 3-6 sequential work units. "
+            "Respond in JSON matching: "
+            "suggested_category (string), suggested_units (list of objects with sequence_order, title, description, estimated_hours, dependencies), "
+            "total_estimated_hours (float), confidence_score (float), reasoning_summary (string), decomposition_notes (string), "
+            "detected_missing_information (list of strings)."
+        )
+        raw_json = await self._call_gemini(prompt, system_instruction=system_instruction)
+        try:
+            return DecompositionResponse(**raw_json)
+        except Exception as e:
+            raise AIValidationException(f"Gemini decomposition response failed schema validation: {e}")
 
     async def explain_risk_and_priority(self, request: ExplanationRequest) -> ExplanationResponse:
-        return await self.fallback.explain_risk_and_priority(request)
+        system_instruction = (
+            "You are Deadline Radar's risk explanation advisor. "
+            "Explain WHY a specific deadline is risky or why a task has high priority, strictly quoting provided numbers. "
+            "Never invent numbers or dates. Keep tone objective, calm, and actionable."
+        )
+        prompt = (
+            f"Generate grounded risk and priority explanation for:\n"
+            f"Title: {request.title}\n"
+            f"Risk State: {request.risk_state}\n"
+            f"Risk Ratio: {request.risk_ratio:.2f}\n"
+            f"Dynamic Priority: {request.dynamic_priority:.1f}/100\n"
+            f"Remaining Hours: {request.remaining_hours:.1f}h\n"
+            f"Available Hours: {request.available_hours:.1f}h\n"
+            f"Days Until Deadline: {request.days_until_deadline}\n"
+            f"Telemetry Factors: {request.factors}\n\n"
+            "Return JSON matching: summary (string), risk_explanation (string), priority_explanation (string), "
+            "variance_explanation (optional string), actionable_recommendations (list of 2-3 strings), grounded_metrics (object)."
+        )
+        raw_json = await self._call_gemini(prompt, system_instruction=system_instruction)
+        try:
+            if "grounded_metrics" not in raw_json or not raw_json["grounded_metrics"]:
+                raw_json["grounded_metrics"] = {
+                    "title": request.title,
+                    "risk_state": request.risk_state,
+                    "risk_ratio": request.risk_ratio,
+                    "dynamic_priority": request.dynamic_priority,
+                    "remaining_hours": request.remaining_hours,
+                    "available_hours": request.available_hours,
+                }
+            return ExplanationResponse(**raw_json)
+        except Exception as e:
+            raise AIValidationException(f"Gemini explanation response failed schema validation: {e}")
 
     async def assist_planning(self, request: PlanningAssistanceRequest) -> PlanningAssistanceResponse:
-        return await self.fallback.assist_planning(request)
+        system_instruction = (
+            "You are Deadline Radar's daily planning assistant. "
+            "Evaluate schedule pressure, trade-offs, sequencing, and conflict risks around the deterministic daily plan. "
+            "Deterministic capacity remains authoritative."
+        )
+        prompt = (
+            f"Evaluate daily plan for date {request.date}:\n"
+            f"Allocated Hours: {request.allocated_hours:.1f}h\n"
+            f"Available Capacity: {request.available_capacity_hours:.1f}h\n"
+            f"Top Work Items: {request.top_items}\n"
+            f"Detected Conflicts: {request.conflicts}\n\n"
+            "Return JSON matching: schedule_pressure ('relaxed'|'balanced'|'overloaded'), advice (string), "
+            "tradeoffs_summary (string), suggested_adjustments (list of strings), sequencing_recommendations (list of strings), "
+            "potential_conflicts (list of strings), focus_strategy (string), is_validated_deterministic (boolean)."
+        )
+        raw_json = await self._call_gemini(prompt, system_instruction=system_instruction)
+        try:
+            raw_json["is_validated_deterministic"] = True
+            return PlanningAssistanceResponse(**raw_json)
+        except Exception as e:
+            raise AIValidationException(f"Gemini planning assistance response failed schema validation: {e}")
 
 
 class ClaudeProvider(BaseAIProvider):
     """
-    Anthropic Claude Provider with automatic Mock fallback.
+    Anthropic Claude Provider with deterministic fallback for local testing.
     """
 
     def __init__(self, api_key: Optional[str] = None):
@@ -503,25 +675,43 @@ class ClaudeProvider(BaseAIProvider):
         self.fallback = MockAIProvider()
 
     async def interpret_work(self, request: WorkInterpretationRequest) -> WorkInterpretationResponse:
+        if not self.api_key:
+            raise AIConfigurationException("Anthropic API key is not configured.")
         return await self.fallback.interpret_work(request)
 
     async def decompose_work(self, request: DecompositionRequest) -> DecompositionResponse:
+        if not self.api_key:
+            raise AIConfigurationException("Anthropic API key is not configured.")
         return await self.fallback.decompose_work(request)
 
     async def estimate_effort(self, request: EffortEstimationRequest) -> EffortEstimationResponse:
+        if not self.api_key:
+            raise AIConfigurationException("Anthropic API key is not configured.")
         return await self.fallback.estimate_effort(request)
 
     async def explain_risk_and_priority(self, request: ExplanationRequest) -> ExplanationResponse:
+        if not self.api_key:
+            raise AIConfigurationException("Anthropic API key is not configured.")
         return await self.fallback.explain_risk_and_priority(request)
 
     async def assist_planning(self, request: PlanningAssistanceRequest) -> PlanningAssistanceResponse:
+        if not self.api_key:
+            raise AIConfigurationException("Anthropic API key is not configured.")
         return await self.fallback.assist_planning(request)
 
 
 def get_ai_provider() -> BaseAIProvider:
-    provider_name = (settings.AI_PROVIDER or "mock").lower()
+    provider_name = (settings.AI_PROVIDER or "").lower()
     if provider_name == "gemini":
         return GeminiProvider()
     elif provider_name == "claude":
         return ClaudeProvider()
+    elif provider_name == "mock":
+        return MockAIProvider()
+
+    # Auto-detect Gemini if key is provided and provider wasn't explicitly mock
+    if settings.effective_gemini_api_key:
+        return GeminiProvider()
+
     return MockAIProvider()
+

@@ -89,12 +89,30 @@ class EffortEstimationRequest(BaseModel):
                 data["work_title"] = data["title"]
         return data
 
+    @model_validator(mode="after")
+    def validate_title_required(self) -> EffortEstimationRequest:
+        t = self.title or self.work_title
+        if not t or not str(t).strip():
+            raise ValueError("Field 'title' is required and cannot be empty.")
+        self.title = str(t).strip()
+        self.work_title = self.title
+        return self
+
     @property
     def effective_title(self) -> str:
         t = self.title or self.work_title
         if not t:
             raise ValueError("Either 'title' or 'work_title' must be provided.")
         return t.strip()
+
+
+class GeminiEffortExtraction(BaseModel):
+    baseline_estimated_hours: float = Field(..., gt=0.0, le=200.0)
+    confidence_score: float = Field(..., ge=0.0, le=1.0)
+    confidence_level: str = "medium"  # low, medium, high
+    major_factors: List[str] = Field(default_factory=list)
+    estimation_rationale: str = Field(..., min_length=3)
+    complexity_rating: Optional[str] = "moderate"
 
 
 class EffortEstimationResponse(BaseModel):

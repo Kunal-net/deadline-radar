@@ -38,8 +38,18 @@ class Settings(BaseSettings):
     # AI Configuration
     AI_PROVIDER: str = "mock"  # "gemini" | "claude" | "mock"
     GEMINI_API_KEY: Optional[str] = None
+    GOOGLE_API_KEY: Optional[str] = None  # Standard alias for Google Gemini API key
+    GEMINI_MODEL: str = "gemini-1.5-flash"
     ANTHROPIC_API_KEY: Optional[str] = None
     AI_TIMEOUT_SECONDS: float = 15.0
+
+    @property
+    def effective_gemini_api_key(self) -> Optional[str]:
+        return self.GEMINI_API_KEY or self.GOOGLE_API_KEY
+
+    @property
+    def is_gemini_configured(self) -> bool:
+        return bool(self.effective_gemini_api_key)
 
     # Rate Limiting
     RATE_LIMIT_GENERAL_PER_MINUTE: int = 100

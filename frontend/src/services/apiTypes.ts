@@ -144,6 +144,14 @@ export interface AIDecompositionResult {
   total_estimated_hours: number;
 }
 
+export interface AIEffortEstimateRequest {
+  title: string;
+  category?: string;
+  description?: string;
+  complexity?: string;
+  units_count?: number;
+}
+
 export interface AIEffortEstimateResult {
   estimated_hours: number;
   suggested_range_min_hours: number;

@@ -10,6 +10,7 @@ import {
   InsightsSummary,
   AIInterpretationResult,
   AIDecompositionResult,
+  AIEffortEstimateRequest,
   AIEffortEstimateResult,
   AIExplanationResult,
   AIPlanAssistResult,
@@ -398,7 +399,7 @@ export function useApplyDecomposition() {
 
 export function useAIEffortEstimate() {
   return useMutation({
-    mutationFn: async (payload: { title: string; category?: string; description?: string }) => {
+    mutationFn: async (payload: AIEffortEstimateRequest) => {
       return await apiRequest<AIEffortEstimateResult>('/ai/estimate-effort', {
         method: 'POST',
         body: JSON.stringify({
@@ -406,6 +407,8 @@ export function useAIEffortEstimate() {
           work_title: payload.title,
           category: payload.category || 'academic',
           description: payload.description,
+          complexity: payload.complexity || 'moderate',
+          units_count: payload.units_count,
         }),
       });
     },

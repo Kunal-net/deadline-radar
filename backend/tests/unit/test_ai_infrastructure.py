@@ -14,18 +14,20 @@ from app.services.ai.schemas import (
 )
 
 
+from app.core.errors import AIConfigurationException
+
+
 @pytest.mark.asyncio
 async def test_ai_provider_factory_and_fallback():
     provider = get_ai_provider()
     assert isinstance(provider, MockAIProvider)
 
     gemini = GeminiProvider(api_key=None)
-    # When api_key is None, it must seamlessly fallback to MockAIProvider
+    # When api_key is None, GeminiProvider must raise controlled AIConfigurationException
     req = WorkInterpretationRequest(text="Finish research paper by Friday taking 4 hours")
-    res = await gemini.interpret_work(req)
-    assert res.title != ""
-    assert res.estimated_hours == 4.0
-    assert res.deadline_utc is not None
+    with pytest.raises(AIConfigurationException) as exc_info:
+        await gemini.interpret_work(req)
+    assert "not configured" in str(exc_info.value)
 
 
 @pytest.mark.asyncio
