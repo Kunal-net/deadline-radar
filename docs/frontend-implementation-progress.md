@@ -21,7 +21,7 @@ This document tracks the sequential execution of all 20 phases from `deadline_ra
 | **Phase 11** | Timeline / Calendar / Workload / Priorities | **Completed** | 2026-09-20 | Temporal views, capacity envelopes, workload concentration |
 | **Phase 12** | Insights | **Completed** | 2026-09-20 | Estimation variance, velocity, learning, anti-fake stats, early-data state |
 | **Phase 13** | Onboarding | **Completed** | 2026-09-20 | Personalization calibration flow, non-negotiable boundaries, store persistence |
-| **Phase 14** | Responsive Design | Pending | — | Multi-device layout testing & refinement |
+| **Phase 14** | Responsive Design | **Completed** | 2026-09-20 | Multi-device layout auditing, mobile drawer with Escape listener, Agenda/Day calendar modes |
 | **Phase 15** | Accessibility | Pending | — | WCAG AA compliance pass, keyboard nav, ARIA attributes |
 | **Phase 16** | Backend Integration | Pending | — | Connect to FastAPI REST API, TanStack Query, error boundaries |
 | **Phase 17** | AI UX Integration | Pending | — | Natural language parsing, decomposition preview, confidence UI |
@@ -233,6 +233,25 @@ This document tracks the sequential execution of all 20 phases from `deadline_ra
   - ESLint: 0 warnings
   - Vite build: passed (built in 3.44s)
 - **Next Phase**: Phase 14 — Responsive Design
+
+---
+
+## Phase 14: Responsive Design Log
+- **Date**: 2026-09-20
+- **Status**: Completed
+- **Skills Used**: `stitch-design-taste`, `high-end-visual-design`, `impeccable`, `motion`, `code-review`
+- **Files Modified/Created**:
+  - `frontend/src/components/layout/Header.tsx`
+  - `frontend/src/pages/CalendarView.tsx`
+- **Improvements & Verifications**:
+  - **Header & Navigation**: Added keyboard Escape listener for mobile drawer dismissal, guaranteed touch target heights ($\ge 44\text{px}$), and compact responsive button typography (`Add` on mobile vs `Add Work` on tablet+).
+  - **Calendar Spatial Layout**: Implemented responsive `Day` and `Agenda` view modes to give mobile and narrow-tablet users a first-class vertical alternative to the wide 7-column spatial grid.
+  - **Work & Today Ledger**: Verified 55/45 asymmetric splits stack into single-column layouts cleanly under `< 1024px` without horizontal overflow or text clipping.
+- **Validation Performed**:
+  - TypeScript `tsc --noEmit`: 0 errors
+  - ESLint: 0 warnings
+- **Next Phase**: Phase 15 — Accessibility
+
 
 
 

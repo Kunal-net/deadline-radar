@@ -143,132 +143,194 @@ export const CalendarView: React.FC = () => {
         </div>
       </section>
 
-      {/* Editorial Spatial Calendar Grid */}
+      {/* Editorial Spatial Calendar Grid & Responsive Modes */}
       <section className="w-full px-margin-mobile md:px-margin-tablet lg:px-margin pb-space-2xl overflow-x-auto">
-        <div className="min-w-[980px] w-full flex flex-col bg-surface-container-low border border-border-hairline">
-          {/* Day Headers & Deadline Flags */}
-          <div className="grid grid-cols-[80px_repeat(7,1fr)] bg-surface-container-high border-b border-border-hairline">
-            <div className="p-space-xs flex flex-col justify-end text-ink-muted border-r border-border-hairline">
-              <span className="font-label-md text-label-md">UTC-05</span>
-            </div>
-            {days.map((day) => (
-              <div
-                key={day.dayNum}
-                className={`p-space-xs flex flex-col gap-1 border-r border-border-hairline ${
-                  day.isDeadline ? 'bg-surface-cream' : 'bg-surface-container-high'
-                }`}
-              >
-                <div className="flex items-baseline justify-between">
-                  <span
-                    className={`font-headline-md text-headline-md ${
-                      day.isDeadline ? 'text-accent-terracotta font-bold' : 'text-ink-primary'
-                    }`}
-                  >
-                    {day.dayNum}
-                  </span>
-                  <span
-                    className={`font-label-md text-label-md uppercase tracking-wider ${
-                      day.isDeadline
-                        ? 'text-accent-terracotta font-semibold'
-                        : 'text-ink-secondary'
-                    }`}
-                  >
-                    {day.dayName}
-                  </span>
-                </div>
-                <div
-                  className={`h-6 flex items-center px-1.5 text-xs truncate ${
-                    day.isDeadline
-                      ? 'bg-accent-terracotta text-canvas-paper font-medium'
-                      : 'text-ink-muted'
-                  }`}
-                >
-                  {day.isDeadline && (
-                    <span className="material-symbols-outlined text-[13px] mr-1">flag</span>
-                  )}
-                  {day.note}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Time Axis & Columns */}
-          <div className="relative grid grid-cols-[80px_repeat(7,1fr)] bg-surface divide-x divide-border-hairline min-h-[640px]">
-            {/* Time labels on the left */}
-            <div className="flex flex-col divide-y divide-border-hairline/60 bg-surface-container-low/40">
-              {timeHours.map((hour) => (
-                <div
-                  key={hour}
-                  className="h-16 p-space-xs font-label-md text-label-md text-ink-muted text-right pr-2 select-none"
-                >
-                  {hour.toString().padStart(2, '0')}:00
-                </div>
-              ))}
-            </div>
-
-            {/* 7 Days Columns */}
-            {[0, 1, 2, 3, 4, 5, 6].map((dayIdx) => {
-              const daySlots = MOCK_CALENDAR_SLOTS.filter((s) => s.day === dayIdx);
-
+        {viewMode === 'agenda' ? (
+          <div className="w-full max-w-4xl mx-auto flex flex-col gap-space-sm">
+            {days.map((day, idx) => {
+              const daySlots = MOCK_CALENDAR_SLOTS.filter((s) => s.day === idx);
               return (
-                <div
-                  key={dayIdx}
-                  className="relative flex flex-col divide-y divide-border-hairline/40 h-full"
-                >
-                  {timeHours.map((hour) => (
-                    <div key={hour} className="h-16 relative hover:bg-surface-cream/20 transition-colors" />
-                  ))}
-
-                  {/* Render Focus Envelopes inside day column */}
-                  {daySlots.map((slot) => {
-                    // Approximate vertical offset based on startTime
-                    const [startH, startM] = slot.startTime.split(':').map(Number);
-                    const [endH, endM] = slot.endTime.split(':').map(Number);
-                    const topOffset = (startH - 8 + startM / 60) * 64;
-                    const durationHours = Math.max(0.5, endH - startH + (endM - startM) / 60);
-                    const blockHeight = durationHours * 64;
-
-                    if (slot.type === 'DEADLINE') {
-                      return (
-                        <div
-                          key={slot.id}
-                          style={{ top: `${topOffset}px` }}
-                          className="absolute left-1 right-1 h-6 bg-accent-terracotta text-canvas-paper px-2 flex items-center justify-between text-xs font-semibold z-20"
-                        >
-                          <span className="truncate">{slot.title}</span>
-                          <span>{slot.startTime}</span>
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <div
-                        key={slot.id}
-                        style={{
-                          top: `${topOffset}px`,
-                          height: `${blockHeight}px`,
-                        }}
-                        className={`absolute left-1 right-1 p-2 flex flex-col justify-between text-xs transition-colors duration-150 z-10 border ${
-                          slot.type === 'FOCUS'
-                            ? 'bg-canvas-paper border-ink-primary text-ink-primary'
-                            : 'bg-surface-dim/70 border-border-hairline text-ink-secondary'
-                        }`}
-                      >
-                        <div className="flex flex-col">
-                          <span className="font-semibold truncate">{slot.title}</span>
-                          <span className="text-[11px] text-ink-muted">{slot.category}</span>
-                        </div>
-                        <span className="font-mono text-[10px] text-ink-muted self-end">
-                          {slot.startTime} – {slot.endTime}
+                <div key={day.dayNum} className="bg-canvas-paper border border-border-hairline p-space-md flex flex-col gap-space-xs">
+                  <div className="flex items-center justify-between pb-space-xs border-b border-border-hairline">
+                    <div className="flex items-center gap-space-sm">
+                      <span className={`font-headline-md text-headline-md ${day.isDeadline ? 'text-accent-terracotta font-bold' : 'text-ink-primary'}`}>
+                        {day.dayName} {day.dayNum}
+                      </span>
+                      {day.isDeadline && (
+                        <span className="px-2 py-0.5 bg-accent-terracotta text-canvas-paper font-label-md text-[11px] font-semibold">
+                          DEADLINE DAY
                         </span>
-                      </div>
-                    );
-                  })}
+                      )}
+                    </div>
+                    <span className="font-body-md text-body-md text-ink-muted">{day.note}</span>
+                  </div>
+                  {daySlots.length === 0 ? (
+                    <span className="text-body-md text-ink-muted py-space-xs">Open uncommitted window — no scheduled blocks</span>
+                  ) : (
+                    <div className="flex flex-col gap-space-xs pt-space-xs">
+                      {daySlots.map((slot) => (
+                        <div key={slot.id} className={`p-space-sm flex items-center justify-between border ${slot.type === 'FOCUS' ? 'bg-surface-cream border-ink-primary' : 'bg-surface border-border-hairline'}`}>
+                          <div className="flex flex-col">
+                            <span className="font-label-lg text-label-lg text-ink-primary font-semibold">{slot.title}</span>
+                            <span className="font-label-md text-label-md text-ink-muted">{slot.category} · {slot.type}</span>
+                          </div>
+                          <span className="font-mono text-label-md text-ink-primary">{slot.startTime} – {slot.endTime}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
-        </div>
+        ) : viewMode === 'day' ? (
+          <div className="w-full max-w-2xl mx-auto bg-canvas-paper border border-border-hairline p-space-lg flex flex-col gap-space-md">
+            <div className="flex items-center justify-between border-b border-border-hairline pb-space-sm">
+              <div>
+                <span className="font-label-md text-label-md text-ink-muted uppercase">Selected Day Focus</span>
+                <h3 className="font-headline-lg text-headline-lg text-ink-primary">Friday, Oct 20</h3>
+              </div>
+              <span className="px-2.5 py-1 bg-accent-terracotta text-canvas-paper font-label-md text-label-md font-semibold">
+                CRITICAL TARGET
+              </span>
+            </div>
+            <div className="flex flex-col gap-space-sm">
+              {MOCK_CALENDAR_SLOTS.filter((s) => s.day === 4).map((slot) => (
+                <div key={slot.id} className="p-space-md border border-ink-primary bg-surface-cream flex items-center justify-between">
+                  <div className="flex flex-col">
+                    <span className="font-headline-md text-headline-md text-ink-primary">{slot.title}</span>
+                    <span className="font-label-md text-label-md text-ink-muted">{slot.category}</span>
+                  </div>
+                  <span className="font-mono text-label-lg text-ink-primary font-semibold">{slot.startTime} – {slot.endTime}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="min-w-[980px] w-full flex flex-col bg-surface-container-low border border-border-hairline">
+            {/* Day Headers & Deadline Flags */}
+            <div className="grid grid-cols-[80px_repeat(7,1fr)] bg-surface-container-high border-b border-border-hairline">
+              <div className="p-space-xs flex flex-col justify-end text-ink-muted border-r border-border-hairline">
+                <span className="font-label-md text-label-md">UTC-05</span>
+              </div>
+              {days.map((day) => (
+                <div
+                  key={day.dayNum}
+                  className={`p-space-xs flex flex-col gap-1 border-r border-border-hairline ${
+                    day.isDeadline ? 'bg-surface-cream' : 'bg-surface-container-high'
+                  }`}
+                >
+                  <div className="flex items-baseline justify-between">
+                    <span
+                      className={`font-headline-md text-headline-md ${
+                        day.isDeadline ? 'text-accent-terracotta font-bold' : 'text-ink-primary'
+                      }`}
+                    >
+                      {day.dayNum}
+                    </span>
+                    <span
+                      className={`font-label-md text-label-md uppercase tracking-wider ${
+                        day.isDeadline
+                          ? 'text-accent-terracotta font-semibold'
+                          : 'text-ink-secondary'
+                      }`}
+                    >
+                      {day.dayName}
+                    </span>
+                  </div>
+                  <div
+                    className={`h-6 flex items-center px-1.5 text-xs truncate ${
+                      day.isDeadline
+                        ? 'bg-accent-terracotta text-canvas-paper font-medium'
+                        : 'text-ink-muted'
+                    }`}
+                  >
+                    {day.isDeadline && (
+                      <span className="material-symbols-outlined text-[13px] mr-1">flag</span>
+                    )}
+                    {day.note}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Time Axis & Columns */}
+            <div className="relative grid grid-cols-[80px_repeat(7,1fr)] bg-surface divide-x divide-border-hairline min-h-[640px]">
+              {/* Time labels on the left */}
+              <div className="flex flex-col divide-y divide-border-hairline/60 bg-surface-container-low/40">
+                {timeHours.map((hour) => (
+                  <div
+                    key={hour}
+                    className="h-16 p-space-xs font-label-md text-label-md text-ink-muted text-right pr-2 select-none"
+                  >
+                    {hour.toString().padStart(2, '0')}:00
+                  </div>
+                ))}
+              </div>
+
+              {/* 7 Days Columns */}
+              {[0, 1, 2, 3, 4, 5, 6].map((dayIdx) => {
+                const daySlots = MOCK_CALENDAR_SLOTS.filter((s) => s.day === dayIdx);
+
+                return (
+                  <div
+                    key={dayIdx}
+                    className="relative flex flex-col divide-y divide-border-hairline/40 h-full"
+                  >
+                    {timeHours.map((hour) => (
+                      <div key={hour} className="h-16 relative hover:bg-surface-cream/20 transition-colors" />
+                    ))}
+
+                    {/* Render Focus Envelopes inside day column */}
+                    {daySlots.map((slot) => {
+                      const [startH, startM] = slot.startTime.split(':').map(Number);
+                      const [endH, endM] = slot.endTime.split(':').map(Number);
+                      const topOffset = (startH - 8 + startM / 60) * 64;
+                      const durationHours = Math.max(0.5, endH - startH + (endM - startM) / 60);
+                      const blockHeight = durationHours * 64;
+
+                      if (slot.type === 'DEADLINE') {
+                        return (
+                          <div
+                            key={slot.id}
+                            style={{ top: `${topOffset}px` }}
+                            className="absolute left-1 right-1 h-6 bg-accent-terracotta text-canvas-paper px-2 flex items-center justify-between text-xs font-semibold z-20"
+                          >
+                            <span className="truncate">{slot.title}</span>
+                            <span>{slot.startTime}</span>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div
+                          key={slot.id}
+                          style={{
+                            top: `${topOffset}px`,
+                            height: `${blockHeight}px`,
+                          }}
+                          className={`absolute left-1 right-1 p-2 flex flex-col justify-between text-xs transition-colors duration-150 z-10 border ${
+                            slot.type === 'FOCUS'
+                              ? 'bg-canvas-paper border-ink-primary text-ink-primary'
+                              : 'bg-surface-dim/70 border-border-hairline text-ink-secondary'
+                          }`}
+                        >
+                          <div className="flex flex-col">
+                            <span className="font-semibold truncate">{slot.title}</span>
+                            <span className="text-[11px] text-ink-muted">{slot.category}</span>
+                          </div>
+                          <span className="font-mono text-[10px] text-ink-muted self-end">
+                            {slot.startTime} – {slot.endTime}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Grounding Photographic Plate */}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Navigation } from './Navigation';
 import { Button } from '../ui/Button';
@@ -7,12 +7,23 @@ export const Header: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
 
+  // Close mobile drawer on Escape key press
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && mobileMenuOpen) {
+        setMobileMenuOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [mobileMenuOpen]);
+
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-surface border-b border-border-hairline">
       <div className="h-20 w-full px-margin-mobile md:px-margin-tablet lg:px-margin flex items-center justify-between gap-gutter">
         {/* Brand Anchor */}
         <div className="flex items-center gap-space-sm shrink-0">
-          <Link to="/today" className="flex items-center gap-space-xs group">
+          <Link to="/today" className="flex items-center gap-space-xs group min-h-[44px]">
             <img
               src="/assets/logo-wordmark.svg"
               alt="Deadline Radar Logo"
@@ -33,14 +44,16 @@ export const Header: React.FC = () => {
             size="md"
             icon={<span className="material-symbols-outlined text-[18px]">add</span>}
             onClick={() => navigate('/work/new')}
+            className="min-h-[44px] px-space-sm sm:px-space-md"
           >
-            Add Work
+            <span className="hidden sm:inline">Add Work</span>
+            <span className="sm:hidden">Add</span>
           </Button>
 
           <Link
             to="/settings"
             aria-label="User Preferences & Settings"
-            className="shrink-0 focus:outline-none focus-visible:ring-1 focus-visible:ring-ink-primary"
+            className="shrink-0 p-1 min-h-[44px] min-w-[44px] flex items-center justify-center focus:outline-none focus-visible:ring-1 focus-visible:ring-ink-primary"
           >
             <img
               src="/assets/user-avatar.jpg"
@@ -55,7 +68,7 @@ export const Header: React.FC = () => {
             aria-label="Toggle Navigation"
             aria-expanded={mobileMenuOpen}
             aria-controls="mobile-navigation"
-            className="md:hidden p-1 text-ink-primary hover:text-accent-terracotta focus:outline-none focus-visible:ring-1 focus-visible:ring-ink-primary"
+            className="md:hidden min-h-[44px] min-w-[44px] flex items-center justify-center p-2 text-ink-primary hover:text-accent-terracotta focus:outline-none focus-visible:ring-1 focus-visible:ring-ink-primary"
           >
             <span className="material-symbols-outlined text-[24px]">
               {mobileMenuOpen ? 'close' : 'menu'}
