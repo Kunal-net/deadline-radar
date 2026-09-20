@@ -73,6 +73,7 @@ export function useCreateWorkItem() {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.todayOverview });
       queryClient.invalidateQueries({ queryKey: ['timelineProjection'] });
       queryClient.invalidateQueries({ queryKey: ['workloadCapacity'] });
+      queryClient.invalidateQueries({ queryKey: ['dailyPlan'] });
     },
   });
 }
@@ -91,6 +92,10 @@ export function useUpdateWorkItem() {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.workItems });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboardSummary });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.todayOverview });
+      queryClient.invalidateQueries({ queryKey: ['timelineProjection'] });
+      queryClient.invalidateQueries({ queryKey: ['workloadCapacity'] });
+      queryClient.invalidateQueries({ queryKey: ['dailyPlan'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.insightsSummary });
     },
   });
 }
@@ -107,6 +112,9 @@ export function useDeleteWorkItem() {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.workItems });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboardSummary });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.todayOverview });
+      queryClient.invalidateQueries({ queryKey: ['timelineProjection'] });
+      queryClient.invalidateQueries({ queryKey: ['workloadCapacity'] });
+      queryClient.invalidateQueries({ queryKey: ['dailyPlan'] });
     },
   });
 }

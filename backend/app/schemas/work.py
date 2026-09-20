@@ -31,6 +31,7 @@ class WorkItemCreateRequest(AppBaseModel):
     is_hard_deadline: bool = True
     importance_weight: float = Field(default=1.0, ge=0.5, le=3.0)
     estimated_hours: float = Field(default=0.0, ge=0.0)
+    status: Optional[str] = Field(default="todo")
     initial_units: Optional[List[InitialUnitCreate]] = Field(None, alias="units")
 
     @model_validator(mode="before")
@@ -47,6 +48,8 @@ class WorkItemCreateRequest(AppBaseModel):
                 data["estimated_hours"] = data["estimatedHours"]
             if "initialUnits" in data and "initial_units" not in data and "units" not in data:
                 data["initial_units"] = data["initialUnits"]
+            if "status" in data and isinstance(data["status"], str):
+                data["status"] = data["status"].lower()
         return data
 
 
@@ -79,6 +82,8 @@ class WorkItemUpdateRequest(AppBaseModel):
                 data["remaining_estimated_hours"] = data["remainingEffortHours"]
             if "remainingEstimatedHours" in data and "remaining_estimated_hours" not in data:
                 data["remaining_estimated_hours"] = data["remainingEstimatedHours"]
+            if "status" in data and isinstance(data["status"], str):
+                data["status"] = data["status"].lower()
         return data
 
 

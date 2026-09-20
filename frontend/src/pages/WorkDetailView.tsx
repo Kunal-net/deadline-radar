@@ -31,6 +31,66 @@ export const WorkDetailView: React.FC = () => {
   const [customHours, setCustomHours] = useState('');
   const [showCustomModal, setShowCustomModal] = useState(false);
 
+  // Edit Dossier Modal State
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editCategory, setEditCategory] = useState('project');
+  const [editDeadline, setEditDeadline] = useState('');
+  const [editEffort, setEditEffort] = useState('2.0');
+  const [editImportance, setEditImportance] = useState('1.0');
+  const [editIsHard, setEditIsHard] = useState(true);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  const openEditModal = () => {
+    if (!item) return;
+    setEditTitle(item.title || '');
+    setEditDescription(item.description || '');
+    setEditCategory((item.category || 'project').toLowerCase());
+    setEditDeadline(item.deadlineUtc ? item.deadlineUtc.slice(0, 16) : '');
+    setEditEffort(String(item.estimatedEffortHours || 2.0));
+    setEditImportance(String(item.importance_weight ?? 1.0));
+    setEditIsHard(item.isHardDeadline ?? true);
+    setEditError(null);
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editTitle.trim() || !item) return;
+
+    setIsSavingEdit(true);
+    setEditError(null);
+    try {
+      const payload: any = {
+        title: editTitle.trim(),
+        description: editDescription.trim() || undefined,
+        category: editCategory.toLowerCase(),
+        importance_weight: Math.min(3.0, Math.max(0.5, parseFloat(editImportance) || 1.0)),
+        total_estimated_hours: Math.max(0.1, parseFloat(editEffort) || 1.0),
+        is_hard_deadline: editIsHard,
+      };
+
+      if (editDeadline) {
+        payload.deadline_utc = new Date(editDeadline).toISOString();
+      }
+
+      await updateItemMutation.mutateAsync({
+        id: item.id,
+        payload,
+      });
+
+      setShowEditModal(false);
+      setToastMessage('Work dossier successfully updated in database.');
+      setTimeout(() => setToastMessage(null), 4000);
+    } catch (err: any) {
+      setEditError(err?.message || 'Failed to update work dossier. Please try again.');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="w-full min-h-screen bg-surface flex items-center justify-center">
@@ -146,9 +206,9 @@ export const WorkDetailView: React.FC = () => {
     try {
       await updateItemMutation.mutateAsync({
         id: item.id,
-        payload: { status: isCompleted ? 'IN_PROGRESS' : 'COMPLETED' },
+        payload: { status: isCompleted ? ('IN_PROGRESS' as any) : ('COMPLETED' as any) },
       });
-      setToastMessage('Work item marked as completed in database.');
+      setToastMessage(isCompleted ? 'Work item reactivated in database.' : 'Work item marked as completed in database.');
       setTimeout(() => setToastMessage(null), 4000);
     } catch (err: any) {
       setToastMessage(`Failed to update status: ${err?.message || 'Server error'}`);
@@ -209,19 +269,29 @@ export const WorkDetailView: React.FC = () => {
             <h1 className="font-headline-xl text-headline-xl text-ink-primary tracking-tight max-w-3xl">
               {item.title}
             </h1>
-            <div className="flex items-center gap-space-xs shrink-0">
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  item.riskLevel === 'CRITICAL'
-                    ? 'bg-status-alert'
-                    : isCompleted
-                    ? 'bg-ink-muted'
-                    : 'bg-ink-primary'
-                }`}
-              />
-              <span className="font-label-lg text-label-lg text-ink-primary font-semibold">
-                {isCompleted ? 'COMPLETED' : item.riskLevel === 'CRITICAL' ? 'CRITICAL HORIZON' : 'ON TRACK · SAFE'}
-              </span>
+            <div className="flex items-center gap-space-sm shrink-0">
+              <button
+                type="button"
+                onClick={openEditModal}
+                className="px-space-sm py-1 bg-surface-cream hover:bg-surface-tint border border-border-hairline text-ink-primary font-label-md text-xs flex items-center gap-1 cursor-pointer transition-colors"
+              >
+                <span className="material-symbols-outlined text-[14px]">edit</span>
+                <span>Edit Dossier</span>
+              </button>
+              <div className="flex items-center gap-space-xs">
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    item.riskLevel === 'CRITICAL'
+                      ? 'bg-status-alert'
+                      : isCompleted
+                      ? 'bg-ink-muted'
+                      : 'bg-ink-primary'
+                  }`}
+                />
+                <span className="font-label-lg text-label-lg text-ink-primary font-semibold">
+                  {isCompleted ? 'COMPLETED' : item.riskLevel === 'CRITICAL' ? 'CRITICAL HORIZON' : 'ON TRACK · SAFE'}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -294,9 +364,18 @@ export const WorkDetailView: React.FC = () => {
           <div className="lg:col-span-7 flex flex-col gap-space-xl">
             {/* Section 1: Work Description & Scope */}
             <article className="flex flex-col gap-space-sm">
-              <span className="font-label-md text-label-md text-ink-muted uppercase tracking-widest">
-                Document Scope &amp; Details
-              </span>
+              <div className="flex items-center justify-between">
+                <span className="font-label-md text-label-md text-ink-muted uppercase tracking-widest">
+                  Document Scope &amp; Details
+                </span>
+                <button
+                  type="button"
+                  onClick={openEditModal}
+                  className="font-label-md text-xs text-accent-terracotta hover:underline cursor-pointer"
+                >
+                  Edit Scope
+                </button>
+              </div>
               <h2 className="font-headline-lg text-headline-lg text-ink-primary">
                 {item.title}
               </h2>
@@ -591,6 +670,13 @@ export const WorkDetailView: React.FC = () => {
             {/* Secondary Actions */}
             <div className="pt-space-sm flex items-center justify-between font-label-md text-label-md text-ink-secondary">
               <button
+                onClick={openEditModal}
+                className="hover:text-ink-primary transition-colors flex items-center gap-1 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[16px]">edit</span>
+                <span>Edit Details</span>
+              </button>
+              <button
                 onClick={() => window.print()}
                 className="hover:text-ink-primary transition-colors flex items-center gap-1 cursor-pointer"
               >
@@ -608,6 +694,160 @@ export const WorkDetailView: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {/* Edit Commitment Dossier Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-primary/40 backdrop-blur-xs p-4">
+          <div className="bg-canvas-paper border border-border-hairline max-w-xl w-full p-space-lg shadow-xl flex flex-col gap-space-md max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-space-xs border-b border-border-hairline">
+              <div className="flex items-center gap-space-xs">
+                <span className="w-2 h-2 bg-accent-terracotta inline-block shrink-0" />
+                <h3 className="font-headline-md text-headline-md text-ink-primary">
+                  Edit Work Dossier
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowEditModal(false)}
+                className="text-ink-muted hover:text-ink-primary font-mono text-sm cursor-pointer p-1"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            {editError && (
+              <div className="p-3 bg-accent-terracotta/10 border border-accent-terracotta/30 text-accent-terracotta font-body-md text-sm">
+                {editError}
+              </div>
+            )}
+
+            <form onSubmit={handleSaveEdit} className="flex flex-col gap-space-md">
+              <div className="flex flex-col gap-1">
+                <label className="font-label-md text-label-md uppercase tracking-wider text-ink-muted">
+                  Work Title
+                </label>
+                <input
+                  type="text"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="bg-surface border border-border-hairline px-3 py-1.5 font-headline-md text-ink-primary focus:outline-none focus:border-ink-primary"
+                  required
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="font-label-md text-label-md uppercase tracking-wider text-ink-muted">
+                  Description &amp; Scope
+                </label>
+                <textarea
+                  rows={3}
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  placeholder="Additional context or notes..."
+                  className="bg-surface border border-border-hairline px-3 py-1.5 font-body-md text-ink-primary focus:outline-none focus:border-ink-primary resize-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-space-md">
+                <div className="flex flex-col gap-1">
+                  <label className="font-label-md text-label-md uppercase tracking-wider text-ink-muted">
+                    Category
+                  </label>
+                  <select
+                    value={editCategory}
+                    onChange={(e) => setEditCategory(e.target.value)}
+                    className="bg-surface border border-border-hairline px-2 py-1.5 font-label-md text-ink-primary focus:outline-none cursor-pointer"
+                  >
+                    <option value="project">Project / Development</option>
+                    <option value="academic">Academic / Coursework</option>
+                    <option value="career">Career / Professional</option>
+                    <option value="exam_prep">Exam Preparation</option>
+                    <option value="personal">Personal Commitment</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="font-label-md text-label-md uppercase tracking-wider text-ink-muted">
+                    Target Deadline
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={editDeadline}
+                    onChange={(e) => setEditDeadline(e.target.value)}
+                    className="bg-surface border border-border-hairline px-2 py-1.5 font-label-md text-ink-primary focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-space-md">
+                <div className="flex flex-col gap-1">
+                  <label className="font-label-md text-label-md uppercase tracking-wider text-ink-muted">
+                    Total Estimated Effort (Hours)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0.1"
+                    max="200"
+                    value={editEffort}
+                    onChange={(e) => setEditEffort(e.target.value)}
+                    className="bg-surface border border-border-hairline px-2 py-1.5 font-label-md text-ink-primary focus:outline-none"
+                    required
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="font-label-md text-label-md uppercase tracking-wider text-ink-muted">
+                    Importance Weight (0.5 – 3.0)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0.5"
+                    max="3.0"
+                    value={editImportance}
+                    onChange={(e) => setEditImportance(e.target.value)}
+                    className="bg-surface border border-border-hairline px-2 py-1.5 font-label-md text-ink-primary focus:outline-none"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="edit-is-hard"
+                  checked={editIsHard}
+                  onChange={(e) => setEditIsHard(e.target.checked)}
+                  className="accent-ink-primary w-4 h-4 cursor-pointer"
+                />
+                <label htmlFor="edit-is-hard" className="font-label-md text-ink-primary cursor-pointer">
+                  Strict Hard Deadline Cutoff
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-space-sm pt-space-sm border-t border-border-hairline mt-space-xs">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="px-space-md py-1.5 bg-surface text-ink-secondary hover:text-ink-primary font-label-md border border-border-hairline transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <Button
+                  variant="primary"
+                  size="md"
+                  type="submit"
+                  disabled={isSavingEdit}
+                >
+                  {isSavingEdit ? 'Persisting Changes...' : 'Save Dossier'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

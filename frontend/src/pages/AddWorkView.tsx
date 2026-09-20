@@ -38,17 +38,28 @@ export const AddWorkView: React.FC = () => {
   });
 
   const [subtasks, setSubtasks] = useState<{ id: string; title: string; duration: string; checked: boolean }[]>([]);
+  const [isEditingParams, setIsEditingParams] = useState(false);
+  const [customTitle, setCustomTitle] = useState('');
+  const [customCategory, setCustomCategory] = useState('');
+  const [customDeadline, setCustomDeadline] = useState('');
+  const [customHours, setCustomHours] = useState('');
+  const [customIsHard, setCustomIsHard] = useState(true);
 
   // Parsing extraction logic
-  const displayTitle = aiInterpretation?.title || (inputText.trim() ? inputText.split(/by/i)[0].trim() : 'Awaiting plain language expression...');
-  const hasDeadline = !!aiInterpretation?.deadline_utc || /(?:by|due|on|before)\s+([a-zA-Z]+|\d+)/i.test(inputText);
-  const hasEffort = (aiInterpretation?.estimated_hours ?? 0) > 0 || /(?:\d+(?:\.\d+)?)\s*(?:hour|hr|h|min|minute)/i.test(inputText);
+  const displayTitle = customTitle.trim() || aiInterpretation?.title || (inputText.trim() ? inputText.split(/by/i)[0].trim() : 'Awaiting plain language expression...');
+  const hasDeadline = !!customDeadline || !!aiInterpretation?.deadline_utc || /(?:by|due|on|before)\s+([a-zA-Z]+|\d+)/i.test(inputText);
+  const hasEffort = (customHours ? parseFloat(customHours) > 0 : (aiInterpretation?.estimated_hours ?? 0) > 0) || /(?:\d+(?:\.\d+)?)\s*(?:hour|hr|h|min|minute)/i.test(inputText);
 
   const handleInterpret = async () => {
     if (!inputText.trim()) return;
     try {
       const res = await interpretMutation.mutateAsync(inputText);
       setAiInterpretation(res);
+      setCustomTitle(res.title || '');
+      setCustomCategory((res.category || 'project').toLowerCase());
+      setCustomDeadline(res.deadline_utc || '');
+      setCustomHours(res.estimated_hours ? String(res.estimated_hours) : '');
+      setCustomIsHard(res.is_hard_deadline ?? true);
     } catch {
       // Graceful fallback already provided by hook
     }
@@ -115,14 +126,14 @@ export const AddWorkView: React.FC = () => {
           };
         });
 
-      let deadline = aiInterpretation?.deadline_utc;
+      let deadline = customDeadline || aiInterpretation?.deadline_utc;
       if (!deadline || isNaN(new Date(deadline).getTime())) {
         const targetDate = new Date();
         targetDate.setDate(targetDate.getDate() + 2);
         deadline = targetDate.toISOString();
       }
 
-      const rawCat = (aiInterpretation?.category || 'academic').toLowerCase();
+      const rawCat = (customCategory || aiInterpretation?.category || 'academic').toLowerCase();
       const cat = rawCat.includes('proj')
         ? 'project'
         : rawCat.includes('exam')
@@ -133,14 +144,17 @@ export const AddWorkView: React.FC = () => {
         ? 'personal'
         : 'academic';
 
+      const hours = customHours ? parseFloat(customHours) : (aiInterpretation?.estimated_hours || 3.5);
+
       await createMutation.mutateAsync({
         title: displayTitle,
+        description: inputText.trim() || undefined,
         category: cat.toUpperCase() as any,
-        estimatedEffortHours: aiInterpretation?.estimated_hours || 3.5,
-        remainingEffortHours: aiInterpretation?.estimated_hours || 3.5,
+        estimatedEffortHours: Math.max(0.1, hours),
+        remainingEffortHours: Math.max(0.1, hours),
         actualLoggedHours: 0,
         deadlineUtc: deadline,
-        isHardDeadline: aiInterpretation?.is_hard_deadline ?? true,
+        isHardDeadline: customIsHard ?? (aiInterpretation?.is_hard_deadline ?? true),
         riskLevel: 'SAFE',
         initial_units: checkedUnits.length > 0 ? checkedUnits : undefined,
       });
@@ -311,8 +325,87 @@ export const AddWorkView: React.FC = () => {
               </div>
 
               {activeTab === 'SYNTHESIZER' ? (
-                /* Structured Interpretation Breakdown */
-                <div className="flex flex-col gap-space-md bg-canvas-paper p-space-md border border-border-hairline divide-y divide-border-hairline">
+                isEditingParams ? (
+                  /* Inline Parameter Editing Form */
+                  <div className="flex flex-col gap-space-sm bg-canvas-paper p-space-md border border-border-hairline">
+                    <div className="flex flex-col gap-1">
+                      <label className="font-label-md text-label-md uppercase tracking-wide text-ink-muted">
+                        Work Item Title
+                      </label>
+                      <input
+                        type="text"
+                        value={customTitle}
+                        onChange={(e) => setCustomTitle(e.target.value)}
+                        placeholder={displayTitle}
+                        className="w-full bg-surface-cream border border-border-hairline px-3 py-1.5 font-headline-md text-ink-primary focus:outline-none focus:border-ink-primary"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-space-sm pt-2">
+                      <div className="flex flex-col gap-1">
+                        <label className="font-label-md text-label-md uppercase tracking-wide text-ink-muted">
+                          Category
+                        </label>
+                        <select
+                          value={customCategory || (aiInterpretation?.category || 'project').toLowerCase()}
+                          onChange={(e) => setCustomCategory(e.target.value)}
+                          className="bg-surface-cream border border-border-hairline px-2 py-1.5 font-label-md text-ink-primary focus:outline-none cursor-pointer"
+                        >
+                          <option value="project">Project / Development</option>
+                          <option value="academic">Academic / Coursework</option>
+                          <option value="career">Career / Professional</option>
+                          <option value="exam_prep">Exam Preparation</option>
+                          <option value="personal">Personal Commitment</option>
+                        </select>
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <label className="font-label-md text-label-md uppercase tracking-wide text-ink-muted">
+                          Target Deadline
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={customDeadline ? customDeadline.slice(0, 16) : (aiInterpretation?.deadline_utc ? aiInterpretation.deadline_utc.slice(0, 16) : '')}
+                          onChange={(e) => setCustomDeadline(e.target.value ? new Date(e.target.value).toISOString() : '')}
+                          className="bg-surface-cream border border-border-hairline px-2 py-1.5 font-label-md text-ink-primary focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-space-sm pt-2">
+                      <div className="flex flex-col gap-1">
+                        <label className="font-label-md text-label-md uppercase tracking-wide text-ink-muted">
+                          Estimated Focus Hours
+                        </label>
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="0.1"
+                          max="100"
+                          value={customHours || (aiInterpretation?.estimated_hours ? String(aiInterpretation.estimated_hours) : '2.0')}
+                          onChange={(e) => setCustomHours(e.target.value)}
+                          placeholder="e.g. 3.5"
+                          className="bg-surface-cream border border-border-hairline px-2 py-1.5 font-label-md text-ink-primary focus:outline-none"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-6">
+                        <input
+                          type="checkbox"
+                          id="custom-is-hard-deadline"
+                          checked={customIsHard}
+                          onChange={(e) => setCustomIsHard(e.target.checked)}
+                          className="accent-ink-primary w-4 h-4 cursor-pointer"
+                        />
+                        <label htmlFor="custom-is-hard-deadline" className="font-label-md text-ink-primary cursor-pointer">
+                          Strict Hard Deadline Cutoff
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* Structured Interpretation Breakdown */
+                  <div className="flex flex-col gap-space-md bg-canvas-paper p-space-md border border-border-hairline divide-y divide-border-hairline">
                   {/* Detected Title */}
                   <div className="flex flex-col md:flex-row md:items-baseline gap-space-xs md:gap-space-md pb-space-xs">
                     <span className="w-36 shrink-0 font-label-md text-label-md uppercase tracking-wide text-ink-muted">
@@ -441,6 +534,7 @@ export const AddWorkView: React.FC = () => {
                     </div>
                   </div>
                 </div>
+                )
               ) : (
                 /* Decomposition View */
                 <div className="flex flex-col gap-space-xs bg-canvas-paper p-space-md border border-border-hairline">
@@ -525,8 +619,20 @@ export const AddWorkView: React.FC = () => {
                   >
                     {createMutation.isPending || confirmed ? 'Scheduling Commitment...' : 'Confirm & Schedule Block'}
                   </Button>
-                  <Button variant="outline" size="md" onClick={() => navigate('/work')}>
-                    Edit Parameters
+                  <Button
+                    variant="outline"
+                    size="md"
+                    onClick={() => {
+                      if (!isEditingParams) {
+                        setCustomTitle(customTitle || displayTitle);
+                        setCustomCategory(customCategory || (aiInterpretation?.category || 'project').toLowerCase());
+                        setCustomHours(customHours || (aiInterpretation?.estimated_hours ? String(aiInterpretation.estimated_hours) : '2.0'));
+                        setCustomDeadline(customDeadline || aiInterpretation?.deadline_utc || '');
+                      }
+                      setIsEditingParams(!isEditingParams);
+                    }}
+                  >
+                    {isEditingParams ? 'View Synthesis' : 'Edit Parameters'}
                   </Button>
                 </div>
                 <button

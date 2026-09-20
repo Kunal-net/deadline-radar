@@ -82,12 +82,12 @@ class WorkService:
             item.remaining_estimated_hours = round(remaining_est, 2)
             item.completion_pct = pct
 
-            if pct == 100 and item.status != "completed":
+            if pct == 100 and (item.status or "").lower() != "completed":
                 item.status = "completed"
                 item.completed_at = datetime.now(timezone.utc)
                 item.remaining_estimated_hours = 0.0
 
-        if item.status == "completed":
+        if (item.status or "").lower() == "completed":
             item.remaining_estimated_hours = 0.0
             item.completion_pct = 100
             item.risk_state = "safe"
@@ -189,7 +189,7 @@ class WorkService:
             importance_weight=req.importance_weight,
             total_estimated_hours=total_est,
             remaining_estimated_hours=total_est,
-            status="todo",
+            status=(req.status or "todo").lower(),
         )
         self._recalculate_item_metrics(item)
         await self.work_repo.create(item)
@@ -229,15 +229,27 @@ class WorkService:
                 code="WORK_ITEM_NOT_FOUND",
             )
 
+        prev_status = (item.status or "").lower()
         update_dict = req.model_dump(exclude_unset=True)
         for key, value in update_dict.items():
             setattr(item, key, value)
 
-        if req.status == "completed":
+        new_status = (item.status or "").lower()
+        if new_status == "completed":
+            item.status = "completed"
             item.completed_at = datetime.now(timezone.utc)
-            for unit in item.units:
-                unit.is_completed = True
-                unit.completed_at = datetime.now(timezone.utc)
+            if item.units:
+                for unit in item.units:
+                    unit.is_completed = True
+                    unit.completed_at = datetime.now(timezone.utc)
+        elif prev_status == "completed" and new_status != "completed":
+            item.completed_at = None
+            if item.units:
+                for unit in item.units:
+                    unit.is_completed = False
+                    unit.completed_at = None
+            elif item.remaining_estimated_hours == 0.0:
+                item.remaining_estimated_hours = item.total_estimated_hours
 
         self._recalculate_item_metrics(item)
         await self.db.commit()

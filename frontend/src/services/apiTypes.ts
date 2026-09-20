@@ -28,6 +28,9 @@ export interface WorkItem {
   createdAt: string;
   updatedAt: string;
   units?: WorkUnit[];
+  importance_weight?: number;
+  importanceWeight?: number;
+  total_estimated_hours?: number;
 }
 
 export interface CapacityMetric {
