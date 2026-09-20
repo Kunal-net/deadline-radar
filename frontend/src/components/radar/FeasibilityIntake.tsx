@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useAIInterpretation } from '../../services/apiHooks';
 
 interface FeasibilityIntakeProps {
   availableBufferHours?: number;
@@ -8,39 +9,49 @@ export const FeasibilityIntake: React.FC<FeasibilityIntakeProps> = ({
   availableBufferHours = 4.0,
 }) => {
   const [query, setQuery] = useState('');
-  const [isEvaluating, setIsEvaluating] = useState(false);
   const [resultMessage, setResultMessage] = useState<string | null>(null);
   const [isFeasible, setIsFeasible] = useState<boolean | null>(null);
+  const interpretMutation = useAIInterpretation();
 
-  const handleEvaluate = (e: React.FormEvent) => {
+  const handleEvaluate = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = query.trim();
     if (!trimmed) return;
 
-    setIsEvaluating(true);
     setResultMessage(null);
 
-    setTimeout(() => {
-      // Deterministic calculation parsing numbers from input
-      const match = trimmed.match(/(\d+(?:\.\d+)?)\s*(?:hour|hr|h)/i);
-      const requestedHours = match ? parseFloat(match[1]) : 3.0;
+    let requestedHours = 3.0;
+    let parsedTitle = trimmed;
 
-      const remaining = availableBufferHours - requestedHours;
-      setIsEvaluating(false);
-
-      if (remaining >= 0) {
-        setIsFeasible(true);
-        setResultMessage(
-          `Feasible: Absorbs ${requestedHours}h of available buffer. Remaining safe reserve: ${remaining.toFixed(1)}h before deadline.`
-        );
-      } else {
-        setIsFeasible(false);
-        setResultMessage(
-          `Capacity Conflict: Exceeds current buffer by ${Math.abs(remaining).toFixed(1)}h. Requires rescheduling lower-priority commitments.`
-        );
+    try {
+      const aiResult = await interpretMutation.mutateAsync(trimmed);
+      if (aiResult.estimated_hours && aiResult.estimated_hours > 0) {
+        requestedHours = aiResult.estimated_hours;
       }
-    }, 450);
+      if (aiResult.title) {
+        parsedTitle = aiResult.title;
+      }
+    } catch {
+      // Deterministic fallback regex if offline or API unavailable
+      const match = trimmed.match(/(\d+(?:\.\d+)?)\s*(?:hour|hr|h)/i);
+      if (match) requestedHours = parseFloat(match[1]);
+    }
+
+    const remaining = availableBufferHours - requestedHours;
+    if (remaining >= 0) {
+      setIsFeasible(true);
+      setResultMessage(
+        `Feasible ("${parsedTitle}"): Absorbs ${requestedHours.toFixed(1)}h of available focus buffer. Safe remaining horizon reserve: +${remaining.toFixed(1)}h.`
+      );
+    } else {
+      setIsFeasible(false);
+      setResultMessage(
+        `Capacity Deficit ("${parsedTitle}"): Requires ${requestedHours.toFixed(1)}h, exceeding current buffer by ${Math.abs(remaining).toFixed(1)}h. Requires rescheduling lower-priority commitments.`
+      );
+    }
   };
+
+  const isEvaluating = interpretMutation.isPending;
 
   return (
     <div className="w-full px-margin-mobile md:px-margin-tablet lg:px-margin pb-space-2xl">

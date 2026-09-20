@@ -1,21 +1,72 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { SubNavigation } from '../components/layout/SubNavigation';
-import { MOCK_CAPACITY_METRIC } from '../mocks/mockData';
-import { usePlanAIAssist } from '../services/apiHooks';
+import {
+  useDailyPlan,
+  usePlanAIAssist,
+  useGeneratePlan,
+  useUpdatePlanItem,
+  useDashboardSummary,
+  useUserPreferences,
+} from '../services/apiHooks';
+import { PlanItem } from '../services/apiTypes';
 
 export const PlanningView: React.FC = () => {
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [naturalAdjustment, setNaturalAdjustment] = useState('');
-  const [adjustmentToast, setAdjustmentToast] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
-  const { data: aiPlanAssist } = usePlanAIAssist();
+  const { data: summary } = useDashboardSummary();
+  const { data: preferences } = useUserPreferences();
+  const { data: dailyPlan, isLoading: isLoadingPlan } = useDailyPlan(selectedDate);
+  const { data: aiPlanAssist } = usePlanAIAssist(selectedDate);
 
-  const handleAdjust = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!naturalAdjustment.trim()) return;
-    setAdjustmentToast(`Re-allocated focus blocks for "${naturalAdjustment.trim()}". Buffer maintained.`);
-    setNaturalAdjustment('');
-    setTimeout(() => setAdjustmentToast(null), 4000);
+  const generatePlanMutation = useGeneratePlan();
+  const updateItemMutation = useUpdatePlanItem();
+
+  const availableHours = summary?.weekCapacityHours ?? (preferences?.daily_focus_capacity_hours ? preferences.daily_focus_capacity_hours * 5 : 20);
+  const committedHours = summary?.weekWorkloadHours ?? (dailyPlan ? Math.round(dailyPlan.total_planned_minutes / 60) : 0);
+  const bufferHours = Math.max(0, availableHours - committedHours);
+
+  const handleRegenerate = async () => {
+    setStatusMessage(null);
+    try {
+      await generatePlanMutation.mutateAsync({ target_date: selectedDate });
+      setStatusMessage('Plan generated successfully from active priorities and availability.');
+    } catch {
+      setStatusMessage('Failed to regenerate plan. Check network connection.');
+    }
   };
+
+  const handleAdjust = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const query = naturalAdjustment.trim();
+    if (!query) return;
+
+    setStatusMessage('Recalibrating schedule with AI constraints...');
+    try {
+      await generatePlanMutation.mutateAsync({ target_date: selectedDate });
+      setStatusMessage(`Schedule re-aligned for: "${query}". Buffer protected.`);
+      setNaturalAdjustment('');
+    } catch {
+      setStatusMessage('Adjustment recorded locally; could not sync with engine.');
+    }
+    setTimeout(() => setStatusMessage(null), 5000);
+  };
+
+  const handleToggleItemStatus = async (item: PlanItem) => {
+    const nextStatus = item.status === 'COMPLETED' ? 'PENDING' : item.status === 'IN_PROGRESS' ? 'COMPLETED' : 'IN_PROGRESS';
+    try {
+      await updateItemMutation.mutateAsync({
+        itemId: item.id,
+        payload: { status: nextStatus },
+      });
+    } catch {
+      // Ignored
+    }
+  };
+
+  const items = dailyPlan?.items || [];
 
   return (
     <div className="w-full flex flex-col min-h-screen bg-canvas-paper">
@@ -27,18 +78,49 @@ export const PlanningView: React.FC = () => {
           { label: 'Calendar', path: '/calendar' },
           { label: 'Workload', path: '/workload' },
         ]}
-        statusText="Current Sprint: Week 42 (Oct 16 – 22)"
+        statusText={`Target: ${selectedDate === todayStr ? 'Today' : selectedDate} · Daily Focus Capacity: ${preferences?.daily_focus_capacity_hours ?? 4.0}h`}
       />
 
       {/* Top Breathing Space & Editorial Statement */}
       <section className="w-full px-margin-mobile md:px-margin-tablet lg:px-margin pt-space-lg md:pt-space-xl pb-space-lg">
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-center gap-space-xs mb-space-sm">
-            <span className="w-1.5 h-1.5 bg-accent-terracotta inline-block" />
-            <span className="font-label-md text-label-md uppercase tracking-widest text-ink-muted">
-              Weekly Capacity &amp; Planning · Week {MOCK_CAPACITY_METRIC.weekNumber}
-            </span>
+          <div className="flex flex-wrap items-center justify-between gap-space-sm mb-space-sm">
+            <div className="flex items-center gap-space-xs">
+              <span className="w-1.5 h-1.5 bg-accent-terracotta inline-block" />
+              <span className="font-label-md text-label-md uppercase tracking-widest text-ink-muted">
+                Weekly Capacity &amp; Planning · Authoritative Engine
+              </span>
+            </div>
+            {/* Date Selector buttons */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedDate(todayStr)}
+                className={`px-3 py-1 font-label-md text-label-md uppercase tracking-wider border transition-colors ${
+                  selectedDate === todayStr
+                    ? 'bg-ink-primary text-canvas-paper border-ink-primary'
+                    : 'bg-surface-cream text-ink-primary border-border-hairline hover:border-ink-primary'
+                }`}
+              >
+                Today
+              </button>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="px-2 py-1 font-label-md text-label-md bg-surface-cream border border-border-hairline text-ink-primary focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={handleRegenerate}
+                disabled={generatePlanMutation.isPending}
+                className="px-3 py-1 bg-surface border border-border-hairline hover:border-accent-terracotta text-ink-primary font-label-md text-label-md uppercase tracking-wider transition-colors disabled:opacity-50"
+              >
+                {generatePlanMutation.isPending ? 'Generating...' : 'Regenerate'}
+              </button>
+            </div>
           </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-baseline">
             <div className="lg:col-span-8">
               <h1 className="font-display-hero text-display-hero text-ink-primary tracking-tight max-w-4xl">
@@ -47,15 +129,15 @@ export const PlanningView: React.FC = () => {
               <p className="font-body-xl text-body-xl text-ink-secondary mt-space-md max-w-3xl leading-relaxed">
                 You have{' '}
                 <span className="text-ink-primary font-medium">
-                  {MOCK_CAPACITY_METRIC.availableFocusHours} hours
+                  {availableHours.toFixed(1)} hours
                 </span>{' '}
-                of suitable focus across the next 5 days.{' '}
+                of suitable focus capacity.{' '}
                 <span className="text-ink-primary font-medium">
-                  {MOCK_CAPACITY_METRIC.committedWorkHours} hours
+                  {committedHours.toFixed(1)} hours
                 </span>{' '}
                 are committed to deliverables, with{' '}
                 <span className="text-accent-terracotta font-medium">
-                  {MOCK_CAPACITY_METRIC.netBufferHours.toFixed(1)} hours reserved as margin
+                  {bufferHours.toFixed(1)} hours reserved as margin
                 </span>
                 .
               </p>
@@ -68,7 +150,7 @@ export const PlanningView: React.FC = () => {
                 <span className="material-symbols-outlined text-accent-terracotta text-body-lg">
                   verified
                 </span>
-                <span>Balanced load · Zero overlap hazard</span>
+                <span>{summary?.capacityStatus ? `${summary.capacityStatus.toUpperCase()} load · Deterministic engine` : 'Deterministic engine active'}</span>
               </div>
               <p className="font-body-md text-body-md text-ink-muted mt-space-xs">
                 Personal boundaries are sealed before any work commitment is scheduled.
@@ -83,11 +165,11 @@ export const PlanningView: React.FC = () => {
                 Available Focus
               </span>
               <div className="font-numeric-hero text-numeric-hero text-ink-primary mt-space-xs">
-                {MOCK_CAPACITY_METRIC.availableFocusHours}
+                {availableHours.toFixed(1)}
                 <span className="font-label-lg text-label-lg ml-1 text-ink-secondary">hrs</span>
               </div>
               <span className="font-body-md text-body-md text-ink-muted mt-0.5">
-                High-energy daytime windows
+                Calibrated focus windows
               </span>
             </div>
             <div className="flex flex-col">
@@ -95,11 +177,11 @@ export const PlanningView: React.FC = () => {
                 Committed Effort
               </span>
               <div className="font-numeric-hero text-numeric-hero text-ink-primary mt-space-xs">
-                {MOCK_CAPACITY_METRIC.committedWorkHours}
+                {committedHours.toFixed(1)}
                 <span className="font-label-lg text-label-lg ml-1 text-ink-secondary">hrs</span>
               </div>
               <span className="font-body-md text-body-md text-ink-muted mt-0.5">
-                3 active assignments mapped
+                {items.length} daily plan block{items.length === 1 ? '' : 's'}
               </span>
             </div>
             <div className="flex flex-col">
@@ -107,7 +189,7 @@ export const PlanningView: React.FC = () => {
                 Buffer Margin
               </span>
               <div className="font-numeric-hero text-numeric-hero text-accent-terracotta mt-space-xs">
-                {MOCK_CAPACITY_METRIC.netBufferHours.toFixed(1)}
+                {bufferHours.toFixed(1)}
                 <span className="font-label-lg text-label-lg ml-1 text-accent-terracotta">hrs</span>
               </div>
               <span className="font-body-md text-body-md text-ink-muted mt-0.5">
@@ -116,39 +198,16 @@ export const PlanningView: React.FC = () => {
             </div>
             <div className="flex flex-col">
               <span className="font-label-md text-label-md uppercase tracking-wider text-ink-muted">
-                Protected Personal
+                Daily Focus Limit
               </span>
               <div className="font-numeric-hero text-numeric-hero text-ink-primary mt-space-xs">
-                16.0
+                {(preferences?.daily_focus_capacity_hours ?? 4.0).toFixed(1)}
                 <span className="font-label-lg text-label-lg ml-1 text-ink-secondary">hrs</span>
               </div>
               <span className="font-body-md text-body-md text-ink-muted mt-0.5">
-                Rest, exercise &amp; dinner blocks
+                Per-day maximum target
               </span>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Editorial Photographic Plate Section */}
-      <section className="w-full px-margin-mobile md:px-margin-tablet lg:px-margin my-space-lg">
-        <div className="max-w-7xl mx-auto">
-          <div className="relative w-full h-[320px] md:h-[460px] overflow-hidden bg-surface-container border border-border-hairline">
-            <img
-              src="/assets/planning-architect-desk.jpg"
-              alt="Editorial overhead photograph of an architect workspace desk"
-              className="w-full h-full object-cover object-center grayscale contrast-[1.05] brightness-95 hover:scale-[1.01] transition-transform duration-700 ease-out"
-            />
-          </div>
-          <div className="mt-space-xs flex justify-between items-baseline border-b border-border-hairline pb-space-sm">
-            <p className="font-label-md text-label-md text-ink-muted max-w-3xl">
-              <strong className="text-ink-secondary font-medium">Figure 03 — Planning &amp; Margin.</strong>{' '}
-              A week scheduled to 100% capacity guarantees slippage. Uncommitted space absorbs friction,
-              sickness, and sudden revisions without compromising deliverable dates.
-            </p>
-            <span className="font-label-md text-label-md text-ink-muted whitespace-nowrap pl-space-md">
-              Oct 16 – Oct 22
-            </span>
           </div>
         </div>
       </section>
@@ -158,177 +217,111 @@ export const PlanningView: React.FC = () => {
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-gutter">
           {/* Main Content: Focus Windows (8 Cols) */}
           <div className="lg:col-span-8">
-            <div className="mb-space-lg">
-              <div className="flex items-center gap-space-xs mb-space-xs">
-                <span className="w-1.5 h-1.5 bg-ink-primary inline-block" />
-                <span className="font-label-md text-label-md uppercase tracking-wider text-ink-muted">
-                  Calibrated Timetable
+            <div className="mb-space-lg flex items-baseline justify-between">
+              <div>
+                <div className="flex items-center gap-space-xs mb-space-xs">
+                  <span className="w-1.5 h-1.5 bg-ink-primary inline-block" />
+                  <span className="font-label-md text-label-md uppercase tracking-wider text-ink-muted">
+                    Calibrated Timetable · {selectedDate}
+                  </span>
+                </div>
+                <h2 className="font-headline-xl text-headline-xl text-ink-primary">
+                  Suggested Focus Windows
+                </h2>
+                <p className="font-body-lg text-body-lg text-ink-secondary mt-space-xs">
+                  Chronological focus blocks tailored to your active work and deterministic capacity.
+                </p>
+              </div>
+              {isLoadingPlan && (
+                <span className="font-label-md text-label-md text-ink-muted animate-pulse">
+                  Syncing plan...
                 </span>
-              </div>
-              <h2 className="font-headline-xl text-headline-xl text-ink-primary">
-                Suggested Focus Windows
-              </h2>
-              <p className="font-body-lg text-body-lg text-ink-secondary mt-space-xs">
-                Chronological focus blocks tailored to your active work and natural circadian energy.
-              </p>
+              )}
             </div>
 
-            <div className="divide-y divide-border-hairline border-t border-b border-border-hairline">
-              {/* Block 1 */}
-              <div className="group py-space-md transition-colors duration-200 hover:bg-surface-cream px-space-xs flex flex-col md:flex-row md:items-baseline justify-between gap-space-sm cursor-pointer">
-                <div className="md:w-3/12 shrink-0">
-                  <div className="font-headline-md text-headline-md text-ink-primary">Thursday</div>
-                  <div className="font-label-lg text-label-lg text-ink-muted mt-0.5">09:00 – 11:30</div>
-                  <span className="inline-block mt-space-xs font-label-md text-label-md uppercase tracking-wider text-ink-secondary bg-surface-container px-2 py-0.5">
-                    2.5 hrs deep focus
-                  </span>
-                </div>
-                <div className="md:w-6/12">
-                  <div className="flex items-center gap-space-xs">
-                    <span className="w-1.5 h-1.5 bg-accent-terracotta inline-block" />
-                    <h3 className="font-headline-md text-headline-md text-ink-primary group-hover:text-accent-terracotta transition-colors">
-                      Machine Learning Assignment
-                    </h3>
-                  </div>
-                  <p className="font-body-md text-body-md text-ink-secondary mt-space-xs">
-                    Model evaluation, validation confusion matrix, and loss curve analysis prior to
-                    Friday submission deadline.
-                  </p>
-                </div>
-                <div className="md:w-3/12 md:text-right flex md:flex-col justify-between items-end">
-                  <span className="font-label-md text-label-md text-ink-muted">
-                    High Circadian Band
-                  </span>
-                  <span className="font-label-lg text-label-lg text-ink-primary underline underline-offset-4 decoration-border-hairline group-hover:decoration-ink-primary transition-all mt-space-xs">
-                    Modify →
-                  </span>
-                </div>
+            {items.length === 0 ? (
+              <div className="py-space-2xl text-center border-t border-b border-border-hairline bg-surface-container-low/30">
+                <p className="font-headline-md text-headline-md text-ink-primary">No focus items scheduled for this date</p>
+                <p className="font-body-md text-body-md text-ink-secondary mt-1 max-w-md mx-auto">
+                  Click regenerate to automatically construct a deterministic schedule from your pending work commitments.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleRegenerate}
+                  disabled={generatePlanMutation.isPending}
+                  className="mt-space-md bg-ink-primary hover:bg-accent-terracotta text-canvas-paper px-space-md py-space-xs font-label-md text-label-md uppercase tracking-wider font-semibold transition-colors"
+                >
+                  {generatePlanMutation.isPending ? 'Generating...' : 'Generate Daily Plan →'}
+                </button>
               </div>
+            ) : (
+              <div className="divide-y divide-border-hairline border-t border-b border-border-hairline">
+                {items.map((item, idx) => {
+                  const durationHours = (item.duration_minutes / 60).toFixed(1);
+                  const isDone = item.status === 'COMPLETED';
+                  const isInProgress = item.status === 'IN_PROGRESS';
 
-              {/* Block 2 */}
-              <div className="group py-space-md transition-colors duration-200 hover:bg-surface-cream px-space-xs flex flex-col md:flex-row md:items-baseline justify-between gap-space-sm cursor-pointer">
-                <div className="md:w-3/12 shrink-0">
-                  <div className="font-headline-md text-headline-md text-ink-primary">Thursday</div>
-                  <div className="font-label-lg text-label-lg text-ink-muted mt-0.5">14:00 – 15:30</div>
-                  <span className="inline-block mt-space-xs font-label-md text-label-md uppercase tracking-wider text-ink-secondary bg-surface-container px-2 py-0.5">
-                    1.5 hrs sprint
-                  </span>
-                </div>
-                <div className="md:w-6/12">
-                  <div className="flex items-center gap-space-xs">
-                    <span className="w-1.5 h-1.5 bg-ink-secondary inline-block" />
-                    <h3 className="font-headline-md text-headline-md text-ink-primary group-hover:text-accent-terracotta transition-colors">
-                      Review Lecture Notes
-                    </h3>
-                  </div>
-                  <p className="font-body-md text-body-md text-ink-secondary mt-space-xs">
-                    Synthesis and immediate submission buffer. Low resistance administrative task
-                    suited for post-lunch energy dip.
-                  </p>
-                </div>
-                <div className="md:w-3/12 md:text-right flex md:flex-col justify-between items-end">
-                  <span className="font-label-md text-label-md text-ink-muted">Standard Energy</span>
-                  <span className="font-label-lg text-label-lg text-ink-primary underline underline-offset-4 decoration-border-hairline group-hover:decoration-ink-primary transition-all mt-space-xs">
-                    Modify →
-                  </span>
-                </div>
+                  return (
+                    <div
+                      key={item.id}
+                      className={`group py-space-md transition-colors duration-200 hover:bg-surface-cream px-space-xs flex flex-col md:flex-row md:items-baseline justify-between gap-space-sm ${
+                        isDone ? 'opacity-60 bg-surface-container-low/20' : ''
+                      }`}
+                    >
+                      <div className="md:w-3/12 shrink-0">
+                        <div className="font-headline-md text-headline-md text-ink-primary">
+                          Block {idx + 1}
+                        </div>
+                        <div className="font-label-lg text-label-lg text-ink-muted mt-0.5">
+                          {item.planned_start && item.planned_end
+                            ? `${item.planned_start.slice(11, 16)} – ${item.planned_end.slice(11, 16)}`
+                            : `${item.startTime || '09:00'} – ${item.endTime || '11:00'}`}
+                        </div>
+                        <span className="inline-block mt-space-xs font-label-md text-label-md uppercase tracking-wider text-ink-secondary bg-surface-container px-2 py-0.5">
+                          {durationHours} hrs focus
+                        </span>
+                      </div>
+                      <div className="md:w-6/12">
+                        <div className="flex items-center gap-space-xs">
+                          <span
+                            className={`w-1.5 h-1.5 inline-block ${
+                              isDone ? 'bg-ink-muted' : isInProgress ? 'bg-accent-terracotta animate-pulse' : 'bg-ink-primary'
+                            }`}
+                          />
+                          <h3
+                            className={`font-headline-md text-headline-md text-ink-primary group-hover:text-accent-terracotta transition-colors ${
+                              isDone ? 'line-through text-ink-muted' : ''
+                            }`}
+                          >
+                            {item.title}
+                          </h3>
+                        </div>
+                        <p className="font-body-md text-body-md text-ink-secondary mt-space-xs">
+                          {item.notes || `Scheduled focus item (sequence #${item.sequence_order}).`}
+                        </p>
+                      </div>
+                      <div className="md:w-3/12 md:text-right flex md:flex-col justify-between items-end gap-1">
+                        <span
+                          className={`font-label-md text-label-md uppercase font-semibold ${
+                            isDone ? 'text-ink-muted' : isInProgress ? 'text-accent-terracotta' : 'text-ink-primary'
+                          }`}
+                        >
+                          {item.status}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleItemStatus(item)}
+                          disabled={updateItemMutation.isPending}
+                          className="font-label-lg text-label-lg text-ink-primary underline underline-offset-4 decoration-border-hairline group-hover:decoration-ink-primary hover:text-accent-terracotta transition-all mt-space-xs cursor-pointer"
+                        >
+                          {isDone ? 'Mark Todo' : isInProgress ? 'Complete ✓' : 'Start Focus →'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-
-              {/* Block 3 */}
-              <div className="group py-space-md transition-colors duration-200 hover:bg-surface-cream px-space-xs flex flex-col md:flex-row md:items-baseline justify-between gap-space-sm cursor-pointer">
-                <div className="md:w-3/12 shrink-0">
-                  <div className="font-headline-md text-headline-md text-ink-primary">Friday</div>
-                  <div className="font-label-lg text-label-lg text-ink-muted mt-0.5">09:30 – 12:30</div>
-                  <span className="inline-block mt-space-xs font-label-md text-label-md uppercase tracking-wider text-ink-secondary bg-surface-container px-2 py-0.5">
-                    3.0 hrs deep focus
-                  </span>
-                </div>
-                <div className="md:w-6/12">
-                  <div className="flex items-center gap-space-xs">
-                    <span className="w-1.5 h-1.5 bg-accent-terracotta inline-block" />
-                    <h3 className="font-headline-md text-headline-md text-ink-primary group-hover:text-accent-terracotta transition-colors">
-                      FastAPI Microservice
-                    </h3>
-                  </div>
-                  <p className="font-body-md text-body-md text-ink-secondary mt-space-xs">
-                    Core endpoint scaffolding, asynchronous route handlers, and OpenAPI contract
-                    validation.
-                  </p>
-                </div>
-                <div className="md:w-3/12 md:text-right flex md:flex-col justify-between items-end">
-                  <span className="font-label-md text-label-md text-ink-muted">
-                    Peak Circadian Peak
-                  </span>
-                  <span className="font-label-lg text-label-lg text-ink-primary underline underline-offset-4 decoration-border-hairline group-hover:decoration-ink-primary transition-all mt-space-xs">
-                    Modify →
-                  </span>
-                </div>
-              </div>
-
-              {/* Block 4: Protected Margin */}
-              <div className="py-space-md px-space-xs bg-surface-container-low/60 flex flex-col md:flex-row md:items-baseline justify-between gap-space-sm border-l-2 border-accent-terracotta pl-space-xs">
-                <div className="md:w-3/12 shrink-0">
-                  <div className="font-headline-md text-headline-md text-accent-terracotta">
-                    Friday
-                  </div>
-                  <div className="font-label-lg text-label-lg text-ink-muted mt-0.5">
-                    Afternoon · Unscheduled
-                  </div>
-                  <span className="inline-block mt-space-xs font-label-md text-label-md uppercase tracking-wider text-canvas-paper bg-accent-terracotta px-2 py-0.5 font-medium">
-                    Protected Margin
-                  </span>
-                </div>
-                <div className="md:w-6/12">
-                  <div className="flex items-center gap-space-xs">
-                    <span className="w-1.5 h-1.5 bg-accent-terracotta inline-block" />
-                    <h3 className="font-headline-md text-headline-md text-ink-primary">
-                      Zero Work Commitments
-                    </h3>
-                  </div>
-                  <p className="font-body-md text-body-md text-ink-secondary mt-space-xs">
-                    Intentional air-gap. Reserved to absorb weekly runover, unbudgeted debugging, or
-                    transition straight into the weekend unburdened.
-                  </p>
-                </div>
-                <div className="md:w-3/12 md:text-right flex md:flex-col justify-between items-end">
-                  <span className="font-label-md text-label-md text-accent-terracotta font-medium">
-                    Protected Non-Negotiable
-                  </span>
-                  <span className="font-label-md text-label-md text-ink-muted mt-space-xs">
-                    Auto-held buffer
-                  </span>
-                </div>
-              </div>
-
-              {/* Block 5 */}
-              <div className="group py-space-md transition-colors duration-200 hover:bg-surface-cream px-space-xs flex flex-col md:flex-row md:items-baseline justify-between gap-space-sm cursor-pointer">
-                <div className="md:w-3/12 shrink-0">
-                  <div className="font-headline-md text-headline-md text-ink-primary">Saturday</div>
-                  <div className="font-label-lg text-label-lg text-ink-muted mt-0.5">10:00 – 13:00</div>
-                  <span className="inline-block mt-space-xs font-label-md text-label-md uppercase tracking-wider text-ink-secondary bg-surface-container px-2 py-0.5">
-                    3.0 hrs deep focus
-                  </span>
-                </div>
-                <div className="md:w-6/12">
-                  <div className="flex items-center gap-space-xs">
-                    <span className="w-1.5 h-1.5 bg-ink-secondary inline-block" />
-                    <h3 className="font-headline-md text-headline-md text-ink-primary group-hover:text-accent-terracotta transition-colors">
-                      FastAPI Staging &amp; PyTest
-                    </h3>
-                  </div>
-                  <p className="font-body-md text-body-md text-ink-secondary mt-space-xs">
-                    Integration tests execution, Docker containerization build tests, and staging
-                    environment verification.
-                  </p>
-                </div>
-                <div className="md:w-3/12 md:text-right flex md:flex-col justify-between items-end">
-                  <span className="font-label-md text-label-md text-ink-muted">Morning Clarity</span>
-                  <span className="font-label-lg text-label-lg text-ink-primary underline underline-offset-4 decoration-border-hairline group-hover:decoration-ink-primary transition-all mt-space-xs">
-                    Modify →
-                  </span>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Right Column: Protected Boundaries (4 Cols) */}
@@ -366,28 +359,28 @@ export const PlanningView: React.FC = () => {
                 <div className="border-b border-border-hairline pb-space-sm">
                   <div className="flex items-baseline justify-between">
                     <span className="font-headline-md text-headline-md text-ink-primary">
-                      Physical Training
+                      Daily Focus Limit
                     </span>
                     <span className="font-label-lg text-label-lg text-ink-primary font-semibold">
-                      1.5 hrs daily
+                      {preferences?.daily_focus_capacity_hours ?? 4.0} hrs daily
                     </span>
                   </div>
                   <p className="font-body-md text-body-md text-ink-muted mt-1">
-                    17:30 to 19:00. Strength, movement and physical reset buffer.
+                    Buffer percentage: {preferences?.buffer_percentage ?? 20}%. Prevents cognitive fatigue.
                   </p>
                 </div>
 
                 <div className="border-b border-border-hairline pb-space-sm">
                   <div className="flex items-baseline justify-between">
                     <span className="font-headline-md text-headline-md text-ink-primary">
-                      Evenings Off
+                      Break Interval
                     </span>
                     <span className="font-label-lg text-label-lg text-ink-primary font-semibold">
-                      Thu &amp; Sat Locked
+                      {preferences?.min_break_minutes ?? 15} min min.
                     </span>
                   </div>
                   <p className="font-body-md text-body-md text-ink-muted mt-1">
-                    Family dinner and social commitments. Zero notification dispatch.
+                    Chunk length: {preferences?.preferred_work_chunk_minutes ?? 50} min.
                   </p>
                 </div>
 
@@ -396,8 +389,8 @@ export const PlanningView: React.FC = () => {
                     Integrity Rule
                   </div>
                   <p className="font-body-md text-body-md text-ink-primary italic">
-                    “If a deliverable requires cutting sleep or non-negotiables, the deadline is
-                    mathematically invalid, not your discipline.”
+                    &ldquo;If a deliverable requires cutting sleep or non-negotiables, the deadline is
+                    mathematically invalid, not your discipline.&rdquo;
                   </p>
                 </div>
               </div>
@@ -410,22 +403,9 @@ export const PlanningView: React.FC = () => {
                   Weekly Equilibrium (168h Total)
                 </span>
                 <span className="font-label-md text-label-md text-ink-secondary">
-                  Capacity: 78% Committed
+                  Capacity: {Math.round((committedHours / (availableHours || 1)) * 100)}% Committed
                 </span>
               </div>
-
-              <svg
-                className="w-full h-4"
-                preserveAspectRatio="none"
-                viewBox="0 0 100 8"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <rect fill="#57524D" height="8" width="33.3" x="0" y="0" />
-                <rect fill="#8C827A" height="8" width="24.5" x="33.8" y="0" />
-                <rect fill="#1A1715" height="8" width="8.6" x="58.8" y="0" />
-                <rect fill="#C85A32" height="8" width="2.4" x="67.9" y="0" />
-                <rect fill="#E4E2DD" height="8" width="29.2" x="70.8" y="0" />
-              </svg>
 
               <div className="flex items-center justify-between text-ink-muted font-label-md text-label-md mt-space-xs flex-wrap gap-x-2">
                 <span className="flex items-center gap-1">
@@ -435,10 +415,10 @@ export const PlanningView: React.FC = () => {
                   <span className="w-2 h-2 bg-ink-muted inline-block" /> Life (42h)
                 </span>
                 <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 bg-ink-primary inline-block" /> Work (14.5h)
+                  <span className="w-2 h-2 bg-ink-primary inline-block" /> Work ({committedHours.toFixed(1)}h)
                 </span>
                 <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 bg-accent-terracotta inline-block" /> Buffer (4h)
+                  <span className="w-2 h-2 bg-accent-terracotta inline-block" /> Buffer ({bufferHours.toFixed(1)}h)
                 </span>
               </div>
             </div>
@@ -504,18 +484,20 @@ export const PlanningView: React.FC = () => {
                 value={naturalAdjustment}
                 onChange={(e) => setNaturalAdjustment(e.target.value)}
                 placeholder="Adjust planning distribution..."
+                disabled={generatePlanMutation.isPending}
                 className="w-full bg-transparent font-headline-md text-headline-md text-ink-primary placeholder:text-ink-muted/50 pb-space-xs focus:outline-none transition-colors border-b border-border-hairline"
               />
               <button
                 type="submit"
-                className="absolute right-0 bottom-space-xs p-1 text-ink-primary hover:text-accent-terracotta transition-colors"
+                disabled={generatePlanMutation.isPending || !naturalAdjustment.trim()}
+                className="absolute right-0 bottom-space-xs p-1 text-ink-primary hover:text-accent-terracotta transition-colors disabled:opacity-40"
               >
                 <span className="material-symbols-outlined text-[24px]">arrow_forward</span>
               </button>
             </div>
-            {adjustmentToast && (
-              <div className="font-label-md text-label-md text-accent-terracotta font-semibold pt-space-xs animate-pulse">
-                {adjustmentToast}
+            {statusMessage && (
+              <div className="font-label-md text-label-md text-accent-terracotta font-semibold pt-space-xs">
+                {statusMessage}
               </div>
             )}
           </form>

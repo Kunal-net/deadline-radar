@@ -4,9 +4,18 @@ import { CapacityMetric } from '../../services/apiTypes';
 
 interface RadarHeroProps {
   metric: CapacityMetric;
+  commitmentsCount?: number;
 }
 
-export const RadarHero: React.FC<RadarHeroProps> = ({ metric }) => {
+export const RadarHero: React.FC<RadarHeroProps> = ({ metric, commitmentsCount }) => {
+  const riskTitle = metric.riskAssessment || (metric.netBufferHours < 0 ? 'Over capacity' : 'Balanced');
+  const riskDescription =
+    metric.netBufferHours < 0
+      ? 'Commitments exceed available focus hours'
+      : metric.netBufferHours < 2
+      ? 'Tight schedule with minimal reserve'
+      : 'Healthy buffer margin preserved';
+
   return (
     <section className="w-full px-margin-mobile md:px-margin-tablet lg:px-margin pt-space-lg pb-space-xl">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start max-w-screen-2xl mx-auto">
@@ -27,13 +36,13 @@ export const RadarHero: React.FC<RadarHeroProps> = ({ metric }) => {
             <p className="font-body-xl text-body-xl text-ink-secondary max-w-xl mb-space-lg leading-relaxed">
               You have{' '}
               <span className="text-ink-primary font-semibold">
-                {metric.availableFocusHours} hours
+                {metric.availableFocusHours.toFixed(1)} hours
               </span>{' '}
-              of available focus before Friday evening.{' '}
+              of available focus before the weekend.{' '}
               <span className="text-ink-primary font-semibold">
-                {metric.committedWorkHours} hours
+                {metric.committedWorkHours.toFixed(1)} hours
               </span>{' '}
-              of work are committed across 3 deadlines.
+              of work are committed {commitmentsCount !== undefined ? `across ${commitmentsCount} deadline${commitmentsCount === 1 ? '' : 's'}` : 'across active commitments'}.
             </p>
           </div>
 
@@ -46,7 +55,7 @@ export const RadarHero: React.FC<RadarHeroProps> = ({ metric }) => {
                 </span>
                 <div className="flex items-baseline gap-space-xs mt-space-xs">
                   <span className="font-headline-lg text-headline-lg text-ink-primary">
-                    {metric.availableFocusHours}
+                    {metric.availableFocusHours.toFixed(1)}
                     <span className="text-label-lg text-ink-muted ml-0.5">h</span>
                   </span>
                 </div>
@@ -58,7 +67,7 @@ export const RadarHero: React.FC<RadarHeroProps> = ({ metric }) => {
                 </span>
                 <div className="flex items-baseline gap-space-xs mt-space-xs">
                   <span className="font-headline-lg text-headline-lg text-ink-primary">
-                    {metric.committedWorkHours}
+                    {metric.committedWorkHours.toFixed(1)}
                     <span className="text-label-lg text-ink-muted ml-0.5">h</span>
                   </span>
                 </div>
@@ -70,7 +79,7 @@ export const RadarHero: React.FC<RadarHeroProps> = ({ metric }) => {
                 </span>
                 <div className="flex items-baseline gap-space-xs mt-space-xs">
                   <span className="font-headline-lg text-headline-lg text-ink-primary">
-                    +{metric.netBufferHours.toFixed(1)}
+                    {metric.netBufferHours >= 0 ? `+${metric.netBufferHours.toFixed(1)}` : metric.netBufferHours.toFixed(1)}
                     <span className="text-label-lg text-ink-muted ml-0.5">h</span>
                   </span>
                 </div>
@@ -81,10 +90,10 @@ export const RadarHero: React.FC<RadarHeroProps> = ({ metric }) => {
                   Current Risk
                 </span>
                 <span className="font-label-lg text-label-lg font-semibold text-accent-terracotta mt-space-xs">
-                  Moderate
+                  {riskTitle}
                 </span>
                 <span className="font-label-md text-label-md text-ink-secondary mt-0.5">
-                  Thursday afternoon is tight
+                  {riskDescription}
                 </span>
               </div>
             </div>

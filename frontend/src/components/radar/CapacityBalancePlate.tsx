@@ -1,11 +1,19 @@
 import React from 'react';
-import { CapacityMetric } from '../../services/apiTypes';
+import { CapacityMetric, WorkItem } from '../../services/apiTypes';
 
 interface CapacityBalancePlateProps {
   metric: CapacityMetric;
+  items?: WorkItem[];
 }
 
-export const CapacityBalancePlate: React.FC<CapacityBalancePlateProps> = ({ metric }) => {
+export const CapacityBalancePlate: React.FC<CapacityBalancePlateProps> = ({ metric, items = [] }) => {
+  const commitmentsCount = items.length;
+  const totalCapacity = metric.availableFocusHours > 0 ? metric.availableFocusHours : 1;
+  const activeItems = items.slice(0, 4);
+  const bufferPercent = Math.max(0, Math.min(100, (metric.netBufferHours / totalCapacity) * 100));
+
+  const palette = ['bg-ink-primary', 'bg-ink-secondary', 'bg-outline', 'bg-accent-terracotta'];
+
   return (
     <section className="w-full bg-surface-container py-space-xl px-margin-mobile md:px-margin-tablet lg:px-margin">
       <div className="max-w-screen-xl mx-auto">
@@ -37,7 +45,7 @@ export const CapacityBalancePlate: React.FC<CapacityBalancePlateProps> = ({ metr
             </div>
             <div>
               <div className="font-numeric-hero text-numeric-hero-mobile md:text-numeric-hero text-ink-primary">
-                {metric.availableFocusHours}
+                {metric.availableFocusHours.toFixed(1)}
                 <span className="font-headline-md text-headline-md text-ink-muted ml-1">hrs</span>
               </div>
               <span className="font-body-md text-body-md text-ink-secondary">
@@ -58,11 +66,11 @@ export const CapacityBalancePlate: React.FC<CapacityBalancePlateProps> = ({ metr
             </div>
             <div>
               <div className="font-numeric-hero text-numeric-hero-mobile md:text-numeric-hero text-ink-primary">
-                {metric.committedWorkHours}
+                {metric.committedWorkHours.toFixed(1)}
                 <span className="font-headline-md text-headline-md text-ink-muted ml-1">hrs</span>
               </div>
               <span className="font-body-md text-body-md text-ink-secondary">
-                3 defined commitments remaining
+                {commitmentsCount} defined commitment{commitmentsCount === 1 ? '' : 's'} remaining
               </span>
             </div>
           </div>
@@ -77,56 +85,60 @@ export const CapacityBalancePlate: React.FC<CapacityBalancePlateProps> = ({ metr
             </div>
             <div>
               <div className="font-headline-lg text-headline-lg text-ink-primary">
-                +{metric.netBufferHours.toFixed(1)} hrs
+                {metric.netBufferHours >= 0 ? `+${metric.netBufferHours.toFixed(1)}` : metric.netBufferHours.toFixed(1)} hrs
               </div>
               <p className="font-body-md text-body-md text-ink-secondary mt-1">
-                Moderate risk. Zero recovery reserve if Thursday slips.
+                {metric.riskAssessment || (metric.netBufferHours >= 0 ? 'Comfortable buffer margin.' : 'Capacity deficit detected.')}
               </p>
             </div>
           </div>
         </div>
 
-        {/* Subtle Progress Distribution Bar */}
+        {/* Dynamic Progress Distribution Bar */}
         <div className="w-full bg-surface-variant h-3 relative overflow-hidden flex">
-          <div
-            className="bg-ink-primary h-full transition-all duration-500"
-            style={{ width: '24.3%' }}
-            title="Machine Learning: 4.5h"
-          />
-          <div
-            className="bg-ink-secondary h-full border-l border-surface transition-all duration-500"
-            style={{ width: '37.8%' }}
-            title="FastAPI Microservice: 7h"
-          />
-          <div
-            className="bg-outline h-full border-l border-surface transition-all duration-500"
-            style={{ width: '16.2%' }}
-            title="Design Research: 3h"
-          />
-          <div
-            className="bg-surface-tint h-full border-l border-surface transition-all duration-500"
-            style={{ width: '21.7%' }}
-            title="Buffer Margin: 4h"
-          />
+          {activeItems.map((item, idx) => {
+            const hours = item.remainingEffortHours ?? item.estimatedEffortHours ?? 0;
+            const pct = Math.min(100, (hours / totalCapacity) * 100);
+            return (
+              <div
+                key={item.id}
+                className={`${palette[idx % palette.length]} h-full transition-all duration-500 border-l border-surface first:border-l-0`}
+                style={{ width: `${pct}%` }}
+                title={`${item.title}: ${hours.toFixed(1)}h`}
+              />
+            );
+          })}
+          {bufferPercent > 0 && (
+            <div
+              className="bg-surface-tint h-full border-l border-surface transition-all duration-500"
+              style={{ width: `${bufferPercent}%` }}
+              title={`Buffer Reservoir: ${metric.netBufferHours.toFixed(1)}h`}
+            />
+          )}
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-space-sm pt-space-xs text-ink-secondary font-label-md text-label-md">
           <div className="flex items-center gap-space-md flex-wrap">
-            <span className="inline-flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 bg-ink-primary inline-block shrink-0" /> ML Assignment (4.5h)
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 bg-ink-secondary inline-block shrink-0" /> FastAPI Service (7.0h)
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 bg-outline inline-block shrink-0" /> Design Research (3.0h)
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 bg-surface-tint inline-block shrink-0" /> Buffer Reservoir (4.0h)
-            </span>
+            {activeItems.map((item, idx) => {
+              const hours = (item.remainingEffortHours ?? item.estimatedEffortHours ?? 0).toFixed(1);
+              return (
+                <span key={item.id} className="inline-flex items-center gap-1.5">
+                  <span className={`w-2.5 h-2.5 ${palette[idx % palette.length]} inline-block shrink-0`} />
+                  {item.title} ({hours}h)
+                </span>
+              );
+            })}
+            {bufferPercent > 0 && (
+              <span className="inline-flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 bg-surface-tint inline-block shrink-0" /> Buffer Reservoir ({metric.netBufferHours.toFixed(1)}h)
+              </span>
+            )}
+            {activeItems.length === 0 && (
+              <span className="text-ink-muted">No active commitments to project.</span>
+            )}
           </div>
           <span className="text-ink-muted">
-            Scale 100% = {metric.availableFocusHours} Available Focus Hours
+            Scale 100% = {metric.availableFocusHours.toFixed(1)} Available Focus Hours
           </span>
         </div>
       </div>

@@ -18,64 +18,13 @@ export interface DeadlineItem {
   linkTo: string;
 }
 
-const DEFAULT_DEADLINES: DeadlineItem[] = [
-  {
-    id: 'wi_ml_01',
-    dueLabel: 'Due in 2 days',
-    dueFormatted: 'Thursday, 23:59',
-    dotColor: 'bg-accent-terracotta',
-    title: 'Machine Learning Assignment',
-    description: 'ResNet Retraining, validation loss analysis, LaTeX write-up.',
-    riskBadge: 'Risk: High',
-    riskBadgeColor: 'text-accent-terracotta',
-    riskExplanation: 'Start before 15:00. Model epoch compute requires 3.5h.',
-    remainingHours: '4.5 hrs',
-    againstLabel: 'Against 7h available today',
-    actionLabel: 'Start Focus',
-    actionPrimary: true,
-    linkTo: '/work/wi_ml_01',
-  },
-  {
-    id: 'wi_fastapi_02',
-    dueLabel: 'Due in 4 days',
-    dueFormatted: 'Saturday, 17:00',
-    dotColor: 'bg-ink-primary',
-    title: 'FastAPI Architecture & Bus',
-    description: 'Asynchronous consumer logic, Docker orchestration spec, integration endpoints.',
-    riskBadge: 'Risk: Normal',
-    riskBadgeColor: 'text-ink-primary',
-    riskExplanation: '3.5h block tomorrow morning fits within allocation.',
-    remainingHours: '7.0 hrs',
-    againstLabel: 'Against 8.5h available Thu/Fri',
-    actionLabel: 'View Spec',
-    actionPrimary: false,
-    linkTo: '/work/wi_fastapi_02',
-  },
-  {
-    id: 'wi_research_03',
-    dueLabel: 'Due in 6 days',
-    dueFormatted: 'Monday, 09:00',
-    dotColor: 'bg-ink-muted',
-    title: 'Design Research Report',
-    description: 'Participant interview synthesis, taxonomy codification, and executive summary.',
-    riskBadge: 'Risk: Low',
-    riskBadgeColor: 'text-ink-muted',
-    riskExplanation: 'Safe weekend buffer allows calm execution on Sunday.',
-    remainingHours: '3.0 hrs',
-    againstLabel: 'Against Sunday block',
-    actionLabel: 'View Notes',
-    actionPrimary: false,
-    linkTo: '/work/wi_research_03',
-  },
-];
-
 interface ApproachingDeadlinesListProps {
   items?: DeadlineItem[];
   onStartFocus?: (title: string, id: string) => void;
 }
 
 export const ApproachingDeadlinesList: React.FC<ApproachingDeadlinesListProps> = ({
-  items = DEFAULT_DEADLINES,
+  items = [],
   onStartFocus,
 }) => {
   return (
@@ -96,12 +45,27 @@ export const ApproachingDeadlinesList: React.FC<ApproachingDeadlinesListProps> =
         </div>
 
         {/* OPEN EDITORIAL ROWS */}
-        <div className="flex flex-col divide-y divide-border-hairline">
-          {items.map((item) => (
-            <div
-              key={item.id}
-              className="group py-space-md transition-colors duration-200 hover:bg-surface-cream px-space-xs -mx-space-xs"
+        {items.length === 0 ? (
+          <div className="py-space-xl text-center border-t border-b border-border-hairline bg-surface-container-low/30 my-space-md">
+            <p className="font-headline-md text-headline-md text-ink-primary">No upcoming commitments</p>
+            <p className="font-body-md text-body-md text-ink-secondary mt-1 max-w-md mx-auto">
+              Your radar horizon is currently clear. Add a commitment to track its trajectory and risk ratio.
+            </p>
+            <Link
+              to="/work/new"
+              className="inline-flex items-center gap-1.5 mt-space-md bg-ink-primary text-canvas-paper px-space-md py-space-xs font-label-md text-label-md uppercase font-semibold hover:bg-accent-terracotta transition-colors"
             >
+              <span>Commit Work</span>
+              <span>+</span>
+            </Link>
+          </div>
+        ) : (
+          <div className="flex flex-col divide-y divide-border-hairline">
+            {items.map((item) => (
+              <div
+                key={item.id}
+                className="group py-space-md transition-colors duration-200 hover:bg-surface-cream px-space-xs -mx-space-xs"
+              >
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-space-sm items-baseline">
                 {/* Due Date Column */}
                 <div className="lg:col-span-3 flex flex-col">
@@ -174,6 +138,7 @@ export const ApproachingDeadlinesList: React.FC<ApproachingDeadlinesListProps> =
             </div>
           ))}
         </div>
+      )}
       </div>
     </section>
   );

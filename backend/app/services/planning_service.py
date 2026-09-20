@@ -74,7 +74,13 @@ class PlanningService:
     ) -> PlanGenerateResponse:
         # Determine target date
         if request.target_date:
-            target_date = date.fromisoformat(request.target_date)
+            if request.target_date.lower() in ("today", "current"):
+                target_date = datetime.now(timezone.utc).date()
+            else:
+                try:
+                    target_date = date.fromisoformat(request.target_date.split("T")[0])
+                except Exception:
+                    target_date = datetime.now(timezone.utc).date()
         else:
             target_date = datetime.now(timezone.utc).date()
 
