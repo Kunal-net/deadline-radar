@@ -1,9 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../store/useAuthStore';
+import {
+  useUserPreferences,
+  useUpdateUserPreferences,
+  useAvailabilityTemplates,
+  useUpdateAvailabilityTemplates,
+} from '../services/apiHooks';
 
-type SettingsTab = 'capacity' | 'boundaries' | 'intelligence' | 'account' | 'notifications';
+type SettingsTab = 'all' | 'capacity' | 'boundaries' | 'intelligence' | 'account' | 'notifications';
 
 export const SettingsView: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<SettingsTab>('capacity');
+  const navigate = useNavigate();
+  const { user, logout } = useAuthStore();
+
+  const { data: preferences } = useUserPreferences();
+  const { data: templates } = useAvailabilityTemplates();
+  const updatePrefMutation = useUpdateUserPreferences();
+  const updateAvailMutation = useUpdateAvailabilityTemplates();
+
+  const [activeTab, setActiveTab] = useState<SettingsTab>('all');
   const [weeklyHours, setWeeklyHours] = useState(18.5);
   const [dailyHours, setDailyHours] = useState(4.5);
   const [activeDays, setActiveDays] = useState<Record<string, boolean>>({
@@ -19,16 +35,115 @@ export const SettingsView: React.FC = () => {
   const [safetyBuffer, setSafetyBuffer] = useState(true);
   const [nudgeOption, setNudgeOption] = useState('Notify 24h before buffer begins compressing');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+
+  // Sync preferences from backend when loaded
+  useEffect(() => {
+    if (preferences) {
+      if (preferences.daily_focus_capacity_hours) {
+        setDailyHours(preferences.daily_focus_capacity_hours);
+        setWeeklyHours(Math.round(preferences.daily_focus_capacity_hours * 5 * 10) / 10);
+      }
+      if (preferences.buffer_percentage !== undefined) {
+        setSafetyBuffer(preferences.buffer_percentage > 0);
+      }
+    }
+  }, [preferences]);
+
+  // Sync availability templates from backend when loaded
+  useEffect(() => {
+    if (templates && templates.length > 0) {
+      const daysKey = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      const newActiveDays: Record<string, boolean> = { ...activeDays };
+      templates.forEach((t) => {
+        if (t.day_of_week >= 0 && t.day_of_week < 7) {
+          newActiveDays[daysKey[t.day_of_week]] = t.is_available;
+        }
+      });
+      setActiveDays(newActiveDays);
+    }
+  }, [templates]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => {
       setToastMessage(null);
-    }, 3200);
+    }, 4000);
   };
 
-  const handleSave = () => {
-    showToast('Settings saved successfully. Capacity baseline recalibrated.');
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await updatePrefMutation.mutateAsync({
+        daily_focus_capacity_hours: dailyHours,
+        buffer_percentage: safetyBuffer ? 15.0 : 0.0,
+        remind_risk_escalation: nudgeOption.includes('24h') || nudgeOption.includes('48h'),
+        ai_assistance_enabled: true,
+      });
+
+      const daysMap: Record<string, number> = {
+        Mon: 0,
+        Tue: 1,
+        Wed: 2,
+        Thu: 3,
+        Fri: 4,
+        Sat: 5,
+        Sun: 6,
+      };
+
+      const newTemplates = Object.entries(activeDays).map(([day, active]) => ({
+        day_of_week: daysMap[day],
+        start_time: '09:00:00',
+        end_time: '18:00:00',
+        is_available: active,
+        capacity_hours: active ? dailyHours : 0.0,
+      }));
+
+      await updateAvailMutation.mutateAsync(newTemplates);
+
+      showToast('Settings saved successfully. Capacity baseline recalibrated and persisted.');
+    } catch (err: any) {
+      showToast(`Failed to save settings: ${err?.message || 'Server error'}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleExportCalendar = async () => {
+    setIsExporting(true);
+    try {
+      const token = localStorage.getItem('deadline_radar_token');
+      const res = await fetch('http://localhost:8000/api/v1/availability/export.ics', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to export calendar');
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'deadline_radar.ics';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      showToast('Calendar export downloaded successfully (deadline_radar.ics).');
+    } catch (err: any) {
+      showToast(`Export failed: ${err?.message || 'Server error'}`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
   };
 
   const toggleDay = (day: string) => {
@@ -39,6 +154,10 @@ export const SettingsView: React.FC = () => {
   };
 
   const activeDaysCount = Object.values(activeDays).filter(Boolean).length;
+
+  const showSection = (tab: SettingsTab) => {
+    return activeTab === 'all' || activeTab === tab;
+  };
 
   return (
     <div className="w-full bg-surface min-h-screen">
@@ -62,16 +181,38 @@ export const SettingsView: React.FC = () => {
           <div className="flex items-center gap-space-sm self-start md:self-auto">
             <button
               onClick={handleSave}
-              className="bg-ink-primary hover:bg-accent-terracotta text-canvas-paper px-space-lg py-space-sm font-label-lg text-label-lg transition-colors duration-200 flex items-center gap-space-xs cursor-pointer rounded-none"
+              disabled={isSaving}
+              className="bg-ink-primary hover:bg-accent-terracotta text-canvas-paper px-space-lg py-space-sm font-label-lg text-label-lg transition-colors duration-200 flex items-center gap-space-xs cursor-pointer rounded-none disabled:opacity-50"
             >
               <span className="material-symbols-outlined text-[18px]">check</span>
-              <span>Save Changes</span>
+              <span>{isSaving ? 'Saving...' : 'Save Changes'}</span>
             </button>
           </div>
         </div>
 
+        {/* Toast Notification */}
+        {toastMessage && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="mb-space-md p-space-sm bg-surface-cream border border-border-hairline text-ink-primary font-body-md text-sm animate-pulse"
+          >
+            {toastMessage}
+          </div>
+        )}
+
         {/* Tab Navigation */}
         <div className="w-full flex items-center gap-space-xs overflow-x-auto pb-space-xs mb-space-xl scrollbar-none bg-surface-container-low p-1.5 rounded-none border border-border-hairline">
+          <button
+            onClick={() => setActiveTab('all')}
+            className={`font-label-lg text-label-lg px-space-md py-space-xs rounded-none transition-all flex items-center gap-space-xs cursor-pointer ${
+              activeTab === 'all'
+                ? 'bg-surface text-ink-primary font-semibold'
+                : 'text-ink-secondary hover:text-ink-primary'
+            }`}
+          >
+            <span>Overview</span>
+          </button>
           <button
             onClick={() => setActiveTab('capacity')}
             className={`font-label-lg text-label-lg px-space-md py-space-xs rounded-none transition-all flex items-center gap-space-xs cursor-pointer ${
@@ -113,8 +254,8 @@ export const SettingsView: React.FC = () => {
                 : 'text-ink-secondary hover:text-ink-primary'
             }`}
           >
-            <span className="material-symbols-outlined text-[16px]">badge</span>
-            <span>Account &amp; Profile</span>
+            <span className="material-symbols-outlined text-[16px]">person</span>
+            <span>Account</span>
           </button>
           <button
             onClick={() => setActiveTab('notifications')}
@@ -125,15 +266,16 @@ export const SettingsView: React.FC = () => {
             }`}
           >
             <span className="material-symbols-outlined text-[16px]">tune</span>
-            <span>Preferences</span>
+            <span>Nudges</span>
           </button>
         </div>
 
-          {/* Main Two-Column Asymmetric Canvas */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
-            {/* Left Column: Core Functional Sections */}
-            <div className="lg:col-span-8 flex flex-col gap-space-xl">
-              {/* Section 1: Work Capacity & Diurnal Rhythm */}
+        {/* Main Two-Column Asymmetric Canvas */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
+          {/* Left Column: Functional Sections */}
+          <div className="lg:col-span-8 flex flex-col gap-space-xl">
+            {/* Section 1: Work Capacity & Diurnal Rhythm */}
+            {showSection('capacity') && (
               <section
                 className="bg-surface-container-lowest p-space-lg rounded-none border border-border-hairline relative overflow-hidden"
                 id="section-capacity"
@@ -264,8 +406,10 @@ export const SettingsView: React.FC = () => {
                   </div>
                 </div>
               </section>
+            )}
 
-              {/* Section 2: Protected Sanctuaries & Non-Negotiables */}
+            {/* Section 2: Protected Sanctuaries & Non-Negotiables */}
+            {showSection('boundaries') && (
               <section
                 className="bg-surface-container-lowest p-space-lg rounded-none border border-border-hairline"
                 id="section-boundaries"
@@ -372,8 +516,10 @@ export const SettingsView: React.FC = () => {
                   </div>
                 </div>
               </section>
+            )}
 
-              {/* Section 3: Estimation Intelligence & Velocity Tuning */}
+            {/* Section 3: Estimation Intelligence & Velocity Tuning */}
+            {showSection('intelligence') && (
               <section
                 className="bg-surface-container-lowest p-space-lg rounded-none border border-border-hairline"
                 id="section-intelligence"
@@ -449,40 +595,64 @@ export const SettingsView: React.FC = () => {
                       </span>
                     </div>
                   </div>
+                </div>
+              </section>
+            )}
 
-                  {/* Proactive Nudge Dropdown */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-space-md bg-surface-container-low rounded-none border border-border-hairline gap-space-sm">
-                    <div className="flex items-start gap-space-md">
-                      <div className="w-10 h-10 rounded-none bg-surface flex items-center justify-center text-ink-primary shrink-0 mt-0.5 border border-border-hairline">
-                        <span className="material-symbols-outlined text-[20px]">notification_important</span>
-                      </div>
-                      <div>
-                        <h3 className="font-headline-md text-headline-md text-ink-primary">Proactive Deadline Nudge</h3>
-                        <p className="font-body-md text-body-md text-ink-secondary">
-                          Triggers alerts prior to critical path encroachment.
-                        </p>
-                      </div>
+            {/* Section 5: Nudges & Notifications */}
+            {showSection('notifications') && (
+              <section
+                className="bg-surface-container-lowest p-space-lg rounded-none border border-border-hairline"
+                id="section-notifications"
+              >
+                <div className="flex items-start justify-between mb-space-lg">
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-space-xs">
+                      <span className="font-label-md text-label-md text-ink-muted">04</span>
+                      <h2 className="font-headline-lg text-headline-lg text-ink-primary">
+                        Deadline Nudges &amp; Reminders
+                      </h2>
                     </div>
-                    <div className="pl-14 sm:pl-0">
-                      <select
-                        value={nudgeOption}
-                        onChange={(e) => setNudgeOption(e.target.value)}
-                        className="bg-surface text-ink-primary font-label-lg text-label-lg px-3 py-2 rounded-none border border-border-hairline focus:outline-none focus:ring-1 focus:ring-ink-primary cursor-pointer"
-                      >
-                        <option>Notify 24h before buffer begins compressing</option>
-                        <option>Notify 48h before buffer begins compressing</option>
-                        <option>Notify immediately upon buffer exhaustion</option>
-                        <option>Quiet mode (Weekly digest only)</option>
-                      </select>
+                    <p className="font-body-md text-body-md text-ink-secondary mt-1">
+                      Configure early warning alerts before buffer begins compressing.
+                    </p>
+                  </div>
+                  <span className="material-symbols-outlined text-ink-muted">notification_important</span>
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-space-md bg-surface-container-low rounded-none border border-border-hairline gap-space-sm">
+                  <div className="flex items-start gap-space-md">
+                    <div className="w-10 h-10 rounded-none bg-surface flex items-center justify-center text-ink-primary shrink-0 mt-0.5 border border-border-hairline">
+                      <span className="material-symbols-outlined text-[20px]">notifications_active</span>
                     </div>
+                    <div>
+                      <h3 className="font-headline-md text-headline-md text-ink-primary">Proactive Deadline Nudge</h3>
+                      <p className="font-body-md text-body-md text-ink-secondary">
+                        Triggers alerts prior to critical path encroachment.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="pl-14 sm:pl-0">
+                    <select
+                      value={nudgeOption}
+                      onChange={(e) => setNudgeOption(e.target.value)}
+                      className="bg-surface text-ink-primary font-label-lg text-label-lg px-3 py-2 rounded-none border border-border-hairline focus:outline-none focus:ring-1 focus:ring-ink-primary cursor-pointer"
+                    >
+                      <option>Notify 24h before buffer begins compressing</option>
+                      <option>Notify 48h before buffer begins compressing</option>
+                      <option>Notify immediately upon buffer exhaustion</option>
+                      <option>Quiet mode (Weekly digest only)</option>
+                    </select>
                   </div>
                 </div>
               </section>
-            </div>
+            )}
+          </div>
 
-            {/* Right Column: Profile & Telemetry Insights */}
-            <div className="lg:col-span-4 flex flex-col gap-space-lg">
-              {/* Account & Profile Editorial Card */}
+          {/* Right Column: Account Card */}
+          <div className="lg:col-span-4 flex flex-col gap-space-lg">
+            {/* Account & Profile Editorial Card */}
+            {showSection('account') && (
               <section
                 className="bg-surface-container-lowest p-space-lg rounded-none border border-border-hairline flex flex-col"
                 id="section-account"
@@ -492,27 +662,24 @@ export const SettingsView: React.FC = () => {
                     Account &amp; Tier
                   </span>
                   <span className="px-2.5 py-0.5 rounded-none bg-surface-cream text-ink-primary font-label-md text-[11px] font-semibold tracking-wide border border-border-hairline">
-                    Personal Pro
+                    Verified User
                   </span>
                 </div>
 
                 {/* Profile Plate */}
                 <div className="flex flex-col items-center text-center p-space-md bg-surface-container-low rounded-none border border-border-hairline mb-space-lg">
-                  <div className="relative mb-space-sm">
-                    <img
-                      alt="Elena Vance profile photograph"
-                      className="w-24 h-24 rounded-none object-cover border border-border-hairline"
-                      src="/assets/user-avatar.jpg"
-                    />
-                    <span className="absolute bottom-0 right-0 w-4 h-4 rounded-none bg-accent-terracotta border border-surface flex items-center justify-center text-[10px] text-canvas-paper">
-                      ✓
-                    </span>
+                  <div className="w-20 h-20 rounded-full bg-ink-primary text-canvas-paper flex items-center justify-center font-headline-xl text-headline-xl mb-space-sm">
+                    {user?.full_name ? user.full_name.charAt(0).toUpperCase() : 'U'}
                   </div>
-                  <h3 className="font-headline-md text-headline-md text-ink-primary">Elena Vance</h3>
-                  <p className="font-body-md text-body-md text-ink-secondary mt-0.5">elena@deadlineradar.com</p>
+                  <h3 className="font-headline-md text-headline-md text-ink-primary">
+                    {user?.full_name || 'Active Workspace User'}
+                  </h3>
+                  <p className="font-body-md text-body-md text-ink-secondary mt-0.5">
+                    {user?.email || 'authenticated@deadlineradar.com'}
+                  </p>
                   <div className="mt-space-sm inline-flex items-center gap-space-xs text-ink-muted font-label-md text-label-md">
                     <span className="material-symbols-outlined text-[14px]">event_repeat</span>
-                    <span>Renewal: Nov 28, 2025</span>
+                    <span>Timezone: {preferences?.timezone || 'UTC'}</span>
                   </div>
                 </div>
 
@@ -520,23 +687,25 @@ export const SettingsView: React.FC = () => {
                 <div className="flex flex-col gap-space-xs">
                   <button
                     onClick={handleSave}
-                    className="w-full bg-ink-primary hover:bg-accent-terracotta text-canvas-paper py-space-sm px-space-md font-label-lg text-label-lg transition-colors duration-200 flex items-center justify-center gap-space-xs cursor-pointer rounded-none"
+                    disabled={isSaving}
+                    className="w-full bg-ink-primary hover:bg-accent-terracotta text-canvas-paper py-space-sm px-space-md font-label-lg text-label-lg transition-colors duration-200 flex items-center justify-center gap-space-xs cursor-pointer rounded-none disabled:opacity-50"
                     type="button"
                   >
                     <span className="material-symbols-outlined text-[18px]">save</span>
-                    <span>Save Changes</span>
+                    <span>{isSaving ? 'Saving Changes...' : 'Save Changes'}</span>
                   </button>
                   <button
-                    onClick={() => showToast('Calendar data export initiated (ICS format).')}
+                    onClick={handleExportCalendar}
+                    disabled={isExporting}
                     className="w-full bg-surface-cream hover:bg-surface-tint text-ink-primary py-space-sm px-space-md font-label-lg text-label-lg transition-colors duration-200 flex items-center justify-center gap-space-xs cursor-pointer rounded-none border border-border-hairline mt-space-xs"
                     type="button"
                   >
                     <span className="material-symbols-outlined text-[18px] text-ink-secondary">file_download</span>
-                    <span>Export My Calendar Data</span>
+                    <span>{isExporting ? 'Generating .ICS Export...' : 'Export My Calendar Data (.ics)'}</span>
                   </button>
                   <button
-                    onClick={() => showToast('Session termination simulation.')}
-                    className="w-full text-status-alert hover:bg-surface-cream py-space-sm px-space-md font-label-lg text-label-lg transition-colors duration-200 flex items-center justify-center gap-space-xs cursor-pointer rounded-none mt-space-xs"
+                    onClick={handleLogout}
+                    className="w-full text-status-alert hover:bg-surface-cream py-space-sm px-space-md font-label-lg text-label-lg transition-colors duration-200 flex items-center justify-center gap-space-xs cursor-pointer rounded-none mt-space-xs border border-transparent hover:border-border-hairline"
                     type="button"
                   >
                     <span className="material-symbols-outlined text-[18px]">logout</span>
@@ -544,116 +713,10 @@ export const SettingsView: React.FC = () => {
                   </button>
                 </div>
               </section>
-
-              {/* Diurnal Capacity Balance Mini-Viz */}
-              <div className="bg-surface-cream p-space-lg rounded-none border border-border-hairline flex flex-col">
-                <div className="flex items-center justify-between mb-space-sm">
-                  <span className="font-label-md text-label-md text-ink-primary uppercase tracking-wider font-semibold">
-                    Weekly Equilibrium
-                  </span>
-                  <span className="material-symbols-outlined text-ink-secondary text-[18px]">donut_large</span>
-                </div>
-                <p className="font-body-md text-body-md text-ink-secondary mb-space-md">
-                  Based on {weeklyHours.toFixed(1)}h weekly baseline and protected sanctuaries, your distribution factor is balanced at 82% efficiency.
-                </p>
-
-                {/* Inline SVG Allocation Graphic */}
-                <div className="relative w-full h-36 flex items-center justify-center mb-space-sm">
-                  <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 100 100">
-                    <circle
-                      className="text-surface-dim"
-                      cx="50"
-                      cy="50"
-                      fill="transparent"
-                      r="40"
-                      stroke="currentColor"
-                      strokeWidth="12"
-                    />
-                    {/* Sleep Sanctuary: 56 hours (33%) */}
-                    <circle
-                      className="text-ink-secondary"
-                      cx="50"
-                      cy="50"
-                      fill="transparent"
-                      r="40"
-                      stroke="currentColor"
-                      strokeDasharray="251.2"
-                      strokeDashoffset="168"
-                      strokeWidth="12"
-                    />
-                    {/* Focus Capacity: 18.5 hours */}
-                    <circle
-                      className="text-accent-terracotta"
-                      cx="50"
-                      cy="50"
-                      fill="transparent"
-                      r="40"
-                      stroke="currentColor"
-                      strokeDasharray="251.2"
-                      strokeDashoffset="223"
-                      strokeLinecap="round"
-                      strokeWidth="12"
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                    <span className="font-headline-md text-headline-md text-ink-primary leading-tight">
-                      {weeklyHours.toFixed(1)}h
-                    </span>
-                    <span className="font-label-md text-[10px] uppercase text-ink-muted">Focus</span>
-                  </div>
-                </div>
-
-                {/* Metric Breakdown List */}
-                <div className="flex flex-col gap-2 pt-space-xs border-t border-border-hairline">
-                  <div className="flex items-center justify-between text-body-md font-body-md">
-                    <span className="flex items-center gap-2 text-ink-secondary">
-                      <span className="w-2 h-2 rounded-none inline-block shrink-0 bg-accent-terracotta" />
-                      Deep Focus
-                    </span>
-                    <span className="font-semibold text-ink-primary">{weeklyHours.toFixed(1)} hrs</span>
-                  </div>
-                  <div className="flex items-center justify-between text-body-md font-body-md">
-                    <span className="flex items-center gap-2 text-ink-secondary">
-                      <span className="w-2 h-2 rounded-none inline-block shrink-0 bg-ink-secondary" />
-                      Sanctuary (Sleep/Life)
-                    </span>
-                    <span className="font-semibold text-ink-primary">66.5 hrs</span>
-                  </div>
-                  <div className="flex items-center justify-between text-body-md font-body-md">
-                    <span className="flex items-center gap-2 text-ink-secondary">
-                      <span className="w-2 h-2 rounded-none inline-block shrink-0 bg-surface-dim" />
-                      Open Buffer
-                    </span>
-                    <span className="font-semibold text-ink-primary">
-                      {Math.max(0, 168 - weeklyHours - 66.5).toFixed(1)} hrs
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Calm Editorial Principle Quote */}
-              <div className="p-space-md rounded-none bg-surface-cream border-l-2 border-accent-terracotta">
-                <span className="material-symbols-outlined text-ink-muted text-[24px] mb-space-xs block">
-                  format_quote
-                </span>
-                <p className="font-body-md text-body-md italic text-ink-secondary">
-                  “Time is not something you fabricate through faster typing. It is the boundary within which your mind is granted peace to craft value.”
-                </p>
-                <span className="font-label-md text-label-md text-ink-muted block mt-space-xs">
-                  — Deadline Radar Operating Charter
-                </span>
-              </div>
-            </div>
+            )}
           </div>
         </div>
-
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed bottom-8 right-8 bg-ink-primary text-canvas-paper px-space-md py-space-sm rounded-none border border-border-hairline flex items-center gap-space-sm z-50 transition-all duration-300">
-          <span className="material-symbols-outlined text-[18px] text-accent-terracotta">task_alt</span>
-          <span className="font-label-lg text-label-lg">{toastMessage}</span>
-        </div>
-      )}
+      </div>
     </div>
   );
 };
