@@ -55,10 +55,14 @@ export const DailyBriefHero: React.FC<DailyBriefHeroProps> = ({
         {/* Primary Statement: Unflinching Editorial Scale */}
         <div className="max-w-4xl flex flex-col gap-space-md">
           <h1 className="font-display-hero text-display-hero-mobile md:text-display-hero text-ink-primary tracking-tight">
-            You have {availableFocusHours} hours of focus today.
+            You have {availableFocusHours} {availableFocusHours === 1 ? 'hour' : 'hours'} of focus today.
           </h1>
           <p className="font-body-xl text-body-xl text-ink-secondary leading-relaxed max-w-3xl">
-            {deadlinesCount} deadlines require attention before tonight. Scheduled breaks and evening protected.
+            {deadlinesCount === 0
+              ? 'No urgent deadlines requiring attention today. Scheduled breaks and evening protected.'
+              : deadlinesCount === 1
+              ? '1 deadline requires attention before tonight. Scheduled breaks and evening protected.'
+              : `${deadlinesCount} deadlines require attention before tonight. Scheduled breaks and evening protected.`}
           </p>
 
           {/* Action Row & Active Focus Session Controls */}

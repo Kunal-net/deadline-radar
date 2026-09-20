@@ -11,7 +11,7 @@ export interface NaturalLanguageInputProps {
 
 export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({
   label = 'Natural Language Intake',
-  placeholder = 'e.g. Finish Machine Learning assignment by Friday 4:00 PM (3.5h effort)...',
+  placeholder = 'e.g. Complete quarterly financial review by Thursday 3:00 PM (4h effort)...',
   onSubmit,
   helperText = 'Extracts deadlines, effort requirements, and capacity fit automatically.',
   className,

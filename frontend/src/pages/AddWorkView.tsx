@@ -6,16 +6,14 @@ import {
   useAIDecomposition,
   useAIEffortEstimate,
   useCreateWorkItem,
+  useWorkItems,
 } from '../services/apiHooks';
 import type { AIInterpretationResult } from '../services/apiTypes';
 
 export const AddWorkView: React.FC = () => {
   const navigate = useNavigate();
 
-  const [inputText, setInputText] = useState(
-    'Finish Machine Learning assignment by Friday 4:00 PM, requires 3.5 hours of deep focus, dependent on lecture notes review'
-  );
-
+  const [inputText, setInputText] = useState('');
   const [confirmed, setConfirmed] = useState(false);
   const [activeTab, setActiveTab] = useState<'SYNTHESIZER' | 'DECOMPOSITION'>('SYNTHESIZER');
   
@@ -24,31 +22,24 @@ export const AddWorkView: React.FC = () => {
   const decomposeMutation = useAIDecomposition();
   const effortMutation = useAIEffortEstimate();
   const createMutation = useCreateWorkItem();
+  const { data: recentWorkItems = [] } = useWorkItems();
 
-  // Active AI interpretation state with sensible fallback
+  // Active AI interpretation state with clean initial state
   const [aiInterpretation, setAiInterpretation] = useState<AIInterpretationResult>({
-    title: 'Finish Machine Learning assignment',
-    category: 'Academic / CS',
-    deadline_utc: 'Friday 4:00 PM',
-    is_hard_deadline: true,
-    estimated_hours: 3.5,
-    constraints: ['Assumed standard 3.5h continuous deep work block based on past ML coursework pace.'],
-    suggested_subtasks: [
-      { sequence_order: 1, title: 'Data preprocessing & baseline loss curves', estimated_hours: 1.0 },
-      { sequence_order: 2, title: 'Model retraining with ResNet backbone & validation', estimated_hours: 1.5 },
-      { sequence_order: 3, title: 'LaTeX write-up, confusion matrix & analysis tables', estimated_hours: 1.0 },
-    ],
+    title: '',
+    category: 'Project',
+    deadline_utc: '',
+    is_hard_deadline: false,
+    estimated_hours: 0,
+    constraints: [],
+    suggested_subtasks: [],
     missing_information: [],
-    confidence_score: 0.94,
+    confidence_score: 0.0,
   });
 
-  const [subtasks, setSubtasks] = useState([
-    { id: '1', title: 'Data preprocessing & baseline loss curves', duration: '60m', checked: true },
-    { id: '2', title: 'Model retraining with ResNet backbone & validation', duration: '90m', checked: true },
-    { id: '3', title: 'LaTeX write-up, confusion matrix & analysis tables', duration: '60m', checked: true },
-  ]);
+  const [subtasks, setSubtasks] = useState<{ id: string; title: string; duration: string; checked: boolean }[]>([]);
 
-  // Parsing extraction logic fallback
+  // Parsing extraction logic
   const displayTitle = aiInterpretation?.title || (inputText.trim() ? inputText.split(/by/i)[0].trim() : 'Awaiting plain language expression...');
   const hasDeadline = !!aiInterpretation?.deadline_utc || /(?:by|due|on|before)\s+([a-zA-Z]+|\d+)/i.test(inputText);
   const hasEffort = (aiInterpretation?.estimated_hours ?? 0) > 0 || /(?:\d+(?:\.\d+)?)\s*(?:hour|hr|h|min|minute)/i.test(inputText);
@@ -328,7 +319,7 @@ export const AddWorkView: React.FC = () => {
                         {displayTitle}
                       </span>
                       <span className="font-body-md text-body-md text-ink-secondary mt-0.5 block">
-                        {aiInterpretation.category || 'Academic / Computational Deliverable'}
+                        {aiInterpretation.category || 'General Deliverable'}
                       </span>
                     </div>
                   </div>
@@ -344,7 +335,7 @@ export const AddWorkView: React.FC = () => {
                           event_upcoming
                         </span>
                         <span className="font-label-lg text-label-lg text-ink-primary font-semibold">
-                          {aiInterpretation.deadline_utc || 'Friday, Oct 20 · 16:00'}
+                          {aiInterpretation.deadline_utc || 'Flexible horizon target'}
                         </span>
                       </div>
                       <span className="px-space-xs py-0.5 bg-surface-cream font-label-md text-label-md text-accent-terracotta font-medium border border-border-hairline">
@@ -364,7 +355,9 @@ export const AddWorkView: React.FC = () => {
                           timer
                         </span>
                         <span className="font-label-lg text-label-lg text-ink-primary font-semibold">
-                          {aiInterpretation.estimated_hours.toFixed(1)} Hours Deep Focus
+                          {aiInterpretation.estimated_hours > 0
+                            ? `${aiInterpretation.estimated_hours.toFixed(1)} Hours Deep Focus`
+                            : 'Awaiting estimation'}
                         </span>
                         <button
                           type="button"
@@ -377,7 +370,11 @@ export const AddWorkView: React.FC = () => {
                       </div>
                       <div className="flex items-center gap-1 text-ink-secondary font-label-md text-label-md">
                         <span className="w-1.5 h-1.5 bg-ink-primary inline-block" />
-                        <span>Confidence: {Math.round(aiInterpretation.confidence_score * 100)}%</span>
+                        <span>
+                          {aiInterpretation.confidence_score > 0
+                            ? `Confidence: ${Math.round(aiInterpretation.confidence_score * 100)}%`
+                            : 'Pending intake'}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -421,45 +418,17 @@ export const AddWorkView: React.FC = () => {
                         </span>
                         <div className="flex flex-col">
                           <span className="font-label-lg text-label-lg text-ink-primary font-medium">
-                            Fits Friday Morning Focus Window (09:30–13:00)
+                            {aiInterpretation.estimated_hours > 0
+                              ? `Requires ${aiInterpretation.estimated_hours.toFixed(1)}h focus allocation`
+                              : 'Awaiting intent to evaluate capacity requirements'}
                           </span>
                           <span className="font-body-md text-body-md text-ink-secondary">
-                            Leaves +1.0 hour safety margin prior to departmental seminar.
+                            {aiInterpretation.deadline_utc
+                              ? `Target deadline: ${aiInterpretation.deadline_utc}`
+                              : 'Protects personal boundaries and deliberate offline buffers.'}
                           </span>
                         </div>
                       </div>
-
-                      <div className="mt-space-xs flex flex-col gap-1">
-                        <div className="flex justify-between font-label-md text-label-md text-ink-muted">
-                          <span>Friday Block Allocation</span>
-                          <span>3.5h / 4.5h available</span>
-                        </div>
-                        <div className="h-2 w-full bg-surface-dim flex overflow-hidden">
-                          <div className="h-full bg-ink-primary" style={{ width: '77.7%' }} />
-                          <div className="h-full bg-accent-terracotta/40" style={{ width: '22.3%' }} />
-                        </div>
-                        <div className="flex justify-between font-label-md text-label-md text-ink-muted">
-                          <span className="text-ink-primary font-medium">■ 3.5h Work Session</span>
-                          <span className="text-accent-terracotta">■ 1.0h Contingency</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Dependency Chain */}
-                  <div className="flex flex-col md:flex-row md:items-baseline gap-space-xs md:gap-space-md pt-space-xs">
-                    <span className="w-36 shrink-0 font-label-md text-label-md uppercase tracking-wide text-ink-muted">
-                      Dependency Chain
-                    </span>
-                    <div className="flex-1 flex items-center gap-space-xs">
-                      <span className="material-symbols-outlined text-[18px] text-ink-secondary">
-                        account_tree
-                      </span>
-                      <span className="font-body-md text-body-md text-ink-primary">
-                        Linked to{' '}
-                        <strong className="font-semibold">Review Lecture Notes</strong> (Scheduled
-                        Thursday Oct 19, 14:00)
-                      </span>
                     </div>
                   </div>
                 </div>
@@ -486,35 +455,41 @@ export const AddWorkView: React.FC = () => {
                     </button>
                   </div>
 
-                  {subtasks.map((st, index) => (
-                    <div
-                      key={st.id}
-                      className="p-space-xs hover:bg-surface-cream transition-colors flex items-center justify-between border-b border-border-hairline/60"
-                    >
-                      <div className="flex items-center gap-space-xs flex-1">
-                        <input
-                          id={`subtask-check-${st.id}`}
-                          type="checkbox"
-                          checked={st.checked}
-                          onChange={() => toggleSubtask(st.id)}
-                          aria-label={`Include subtask: ${st.title}`}
-                          className="accent-ink-primary cursor-pointer w-4 h-4 rounded-none focus-visible:ring-1 focus-visible:ring-ink-primary"
-                        />
-                        <label
-                          htmlFor={`subtask-check-${st.id}`}
-                          className="flex items-center gap-space-xs cursor-pointer flex-1"
-                        >
-                          <span className="font-mono text-xs text-ink-muted select-none">0{index + 1}.</span>
-                          <span className={`font-body-md text-body-md text-ink-primary ${!st.checked ? 'line-through text-ink-muted' : ''}`}>
-                            {st.title}
-                          </span>
-                        </label>
-                      </div>
-                      <span className="font-mono text-xs bg-surface-cream px-2 py-0.5 text-ink-secondary border border-border-hairline shrink-0 select-none">
-                        {st.duration}
-                      </span>
+                  {subtasks.length === 0 ? (
+                    <div className="py-space-md text-center text-ink-muted font-body-md text-sm">
+                      No subtasks decomposed yet. Type your commitment intent above and click &quot;Auto-Decompose with AI&quot;.
                     </div>
-                  ))}
+                  ) : (
+                    subtasks.map((st, index) => (
+                      <div
+                        key={st.id}
+                        className="p-space-xs hover:bg-surface-cream transition-colors flex items-center justify-between border-b border-border-hairline/60"
+                      >
+                        <div className="flex items-center gap-space-xs flex-1">
+                          <input
+                            id={`subtask-check-${st.id}`}
+                            type="checkbox"
+                            checked={st.checked}
+                            onChange={() => toggleSubtask(st.id)}
+                            aria-label={`Include subtask: ${st.title}`}
+                            className="accent-ink-primary cursor-pointer w-4 h-4 rounded-none focus-visible:ring-1 focus-visible:ring-ink-primary"
+                          />
+                          <label
+                            htmlFor={`subtask-check-${st.id}`}
+                            className="flex items-center gap-space-xs cursor-pointer flex-1"
+                          >
+                            <span className="font-mono text-xs text-ink-muted select-none">0{index + 1}.</span>
+                            <span className={`font-body-md text-body-md text-ink-primary ${!st.checked ? 'line-through text-ink-muted' : ''}`}>
+                              {st.title}
+                            </span>
+                          </label>
+                        </div>
+                        <span className="font-mono text-xs bg-surface-cream px-2 py-0.5 text-ink-secondary border border-border-hairline shrink-0 select-none">
+                          {st.duration}
+                        </span>
+                      </div>
+                    ))
+                  )}
                   <p className="pt-space-xs font-label-md text-label-md text-ink-muted italic">
                     AI suggests breaking this deliverable into structured cognitive chunks to prevent overwhelm.
                   </p>
@@ -601,56 +576,43 @@ export const AddWorkView: React.FC = () => {
               </div>
 
               <div className="flex flex-col divide-y divide-border-hairline">
-                <div className="py-space-sm hover:bg-surface-cream px-space-xs transition-colors">
-                  <div className="flex items-baseline justify-between gap-space-xs">
-                    <span className="font-label-lg text-label-lg font-semibold text-ink-primary truncate">
-                      Q3 Capital Allocation Memo
+                {recentWorkItems.length === 0 ? (
+                  <div className="py-space-md text-center flex flex-col items-center">
+                    <span className="material-symbols-outlined text-[24px] text-ink-muted/50 mb-1">
+                      inbox
                     </span>
-                    <span className="font-label-md text-label-md text-ink-muted shrink-0">
-                      Today 18:00
-                    </span>
+                    <p className="font-body-md text-body-md text-ink-muted">
+                      No commitments recorded yet.
+                    </p>
                   </div>
-                  <div className="flex items-center justify-between pt-1 font-body-md text-body-md text-ink-secondary">
-                    <span>2.0 hrs deep work</span>
-                    <span className="text-ink-primary font-medium text-[13px] bg-surface-tint px-1.5 py-0.5">
-                      Sufficient Margin (+1.5h)
-                    </span>
-                  </div>
-                </div>
-
-                <div className="py-space-sm hover:bg-surface-cream px-space-xs transition-colors">
-                  <div className="flex items-baseline justify-between gap-space-xs">
-                    <span className="font-label-lg text-label-lg font-semibold text-ink-primary truncate">
-                      Quarterly Client Synthesis Review
-                    </span>
-                    <span className="font-label-md text-label-md text-ink-muted shrink-0">
-                      Tomorrow 11:30
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between pt-1 font-body-md text-body-md text-ink-secondary">
-                    <span>1.5 hrs review</span>
-                    <span className="text-accent-terracotta font-medium text-[13px] bg-secondary-fixed/50 px-1.5 py-0.5">
-                      Tight Window (0.2h)
-                    </span>
-                  </div>
-                </div>
-
-                <div className="py-space-sm hover:bg-surface-cream px-space-xs transition-colors">
-                  <div className="flex items-baseline justify-between gap-space-xs">
-                    <span className="font-label-lg text-label-lg font-semibold text-ink-primary truncate">
-                      System Architecture Documentation
-                    </span>
-                    <span className="font-label-md text-label-md text-ink-muted shrink-0">
-                      Oct 23 · 12:00
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between pt-1 font-body-md text-body-md text-ink-secondary">
-                    <span>4.0 hrs technical writing</span>
-                    <span className="text-ink-primary font-medium text-[13px] bg-surface-tint px-1.5 py-0.5">
-                      Protected Block Set
-                    </span>
-                  </div>
-                </div>
+                ) : (
+                  recentWorkItems.slice(0, 3).map((item) => (
+                    <div
+                      key={item.id}
+                      className="py-space-sm hover:bg-surface-cream px-space-xs transition-colors"
+                    >
+                      <div className="flex items-baseline justify-between gap-space-xs">
+                        <span className="font-label-lg text-label-lg font-semibold text-ink-primary truncate">
+                          {item.title}
+                        </span>
+                        <span className="font-label-md text-label-md text-ink-muted shrink-0">
+                          {item.deadline_utc
+                            ? new Date(item.deadline_utc).toLocaleDateString(undefined, {
+                                month: 'short',
+                                day: 'numeric',
+                              })
+                            : 'No deadline'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between pt-1 font-body-md text-body-md text-ink-secondary">
+                        <span>{item.estimated_hours || 0} hrs {item.category ? item.category.toLowerCase() : 'work'}</span>
+                        <span className="text-ink-primary font-medium text-[13px] bg-surface-tint px-1.5 py-0.5">
+                          {item.status === 'COMPLETED' ? 'Completed' : (item.risk_level ? `${item.risk_level} Risk` : 'Active')}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
 
               {/* Saturation widget */}
@@ -661,14 +623,18 @@ export const AddWorkView: React.FC = () => {
                   </span>
                   <div className="flex flex-col">
                     <span className="font-label-md text-label-md font-semibold text-ink-primary">
-                      Week 42 Saturation
+                      Current Workload
                     </span>
                     <span className="font-label-md text-label-md text-ink-secondary">
-                      27.5 of 32.0 hours allocated
+                      {recentWorkItems.filter(i => i.status !== 'COMPLETED').reduce((acc, i) => acc + (i.estimated_hours || 0), 0).toFixed(1)} hrs committed
                     </span>
                   </div>
                 </div>
-                <span className="font-headline-md text-headline-md text-ink-primary">86%</span>
+                <span className="font-headline-md text-headline-md text-ink-primary">
+                  {recentWorkItems.length > 0
+                    ? `${Math.min(100, Math.round((recentWorkItems.filter(i => i.status !== 'COMPLETED').reduce((acc, i) => acc + (i.estimated_hours || 0), 0) / 35) * 100))}%`
+                    : '0%'}
+                </span>
               </div>
             </div>
           </div>

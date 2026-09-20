@@ -40,11 +40,11 @@ class WorkItemRepository(BaseRepository[WorkItem]):
         query = select(WorkItem).where(WorkItem.user_id == user_id)
 
         if status:
-            query = query.where(WorkItem.status == status)
+            query = query.where(func.lower(WorkItem.status) == status.lower())
         if category:
-            query = query.where(WorkItem.category == category)
+            query = query.where(func.lower(WorkItem.category) == category.lower())
         if risk_state:
-            query = query.where(WorkItem.risk_state == risk_state)
+            query = query.where(func.lower(WorkItem.risk_state) == risk_state.lower())
         if due_before:
             query = query.where(WorkItem.deadline_utc <= due_before)
 

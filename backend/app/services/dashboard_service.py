@@ -91,7 +91,7 @@ class DashboardService:
         week_workload = 0.0
 
         for item in items:
-            if item.status == "COMPLETED":
+            if (item.status or "").upper() in ("COMPLETED", "CANCELLED", "ARCHIVED"):
                 continue
 
             # Calculate deterministic risk
@@ -213,7 +213,7 @@ class DashboardService:
         projected_items: List[TimelineItemProjection] = []
 
         for item in items:
-            if item.status == "COMPLETED" or item.remaining_estimated_hours <= 0:
+            if (item.status or "").upper() in ("COMPLETED", "CANCELLED", "ARCHIVED") or item.remaining_estimated_hours <= 0:
                 continue
 
             remaining = item.remaining_estimated_hours
@@ -281,7 +281,7 @@ class DashboardService:
         template_day_map = {t.day_of_week: t.capacity_hours for t in templates if t.is_available}
 
         items, _ = await self.work_repo.list_work_items(user_id=user_id, limit=200)
-        active_items = [i for i in items if i.status != "COMPLETED" and i.remaining_estimated_hours > 0]
+        active_items = [i for i in items if (i.status or "").upper() not in ("COMPLETED", "CANCELLED", "ARCHIVED") and i.remaining_estimated_hours > 0]
 
         # Map due items to target date
         day_demand: Dict[date, float] = {}

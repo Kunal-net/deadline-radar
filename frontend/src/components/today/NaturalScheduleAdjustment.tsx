@@ -83,7 +83,7 @@ export const NaturalScheduleAdjustment: React.FC = () => {
               value={inputValue}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
-              placeholder="e.g. Reschedule lecture review to tomorrow morning"
+              placeholder="e.g. Shift deep work block to afternoon, protect evening buffer..."
               className="w-full bg-surface-cream border border-border-hairline px-space-md py-space-sm font-body-md text-body-md text-ink-primary placeholder:text-ink-muted/60 focus:outline-none focus:border-ink-primary transition-colors"
             />
           </div>
