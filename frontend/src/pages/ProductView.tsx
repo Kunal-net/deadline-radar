@@ -706,16 +706,16 @@ export const ProductView: React.FC = () => {
 
                 <div className="flex flex-col sm:flex-row items-center gap-space-md">
                   <button
-                    onClick={() => navigate('/onboarding')}
-                    className="px-space-xl py-space-sm bg-ink-primary text-canvas-paper font-label-lg text-label-lg hover:bg-accent-terracotta transition-colors duration-200"
+                    onClick={() => navigate(isAuthenticated ? '/today' : '/signup')}
+                    className="px-space-xl py-space-sm bg-ink-primary text-canvas-paper font-label-lg text-label-lg hover:bg-accent-terracotta transition-colors duration-200 cursor-pointer"
                   >
-                    Open Deadline Radar
+                    {isAuthenticated ? 'Open Deadline Radar' : 'Create Free Account'}
                   </button>
                   <button
-                    onClick={() => navigate('/today')}
-                    className="font-label-lg text-label-lg text-ink-primary hover:text-accent-terracotta transition-colors"
+                    onClick={() => navigate(isAuthenticated ? '/today' : '/login')}
+                    className="font-label-lg text-label-lg text-ink-primary hover:text-accent-terracotta transition-colors cursor-pointer"
                   >
-                    Enter Live Workspace →
+                    {isAuthenticated ? 'Enter Live Workspace →' : 'Sign In to Workspace →'}
                   </button>
                 </div>
 

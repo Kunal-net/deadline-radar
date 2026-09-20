@@ -103,6 +103,12 @@ class AuthService:
                 code="INVALID_CREDENTIALS",
             )
 
+        if not user.is_active:
+            raise UnauthorizedException(
+                message="User account is deactivated",
+                code="ACCOUNT_DEACTIVATED",
+            )
+
         token = create_access_token({"sub": user.id, "email": user.email})
         return TokenResponse(
             access_token=token,

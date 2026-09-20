@@ -7,6 +7,7 @@ import {
   useAvailabilityTemplates,
   useUpdateAvailabilityTemplates,
 } from '../services/apiHooks';
+import { BASE_URL } from '../services/apiClient';
 
 type SettingsTab = 'all' | 'capacity' | 'boundaries' | 'intelligence' | 'account' | 'notifications';
 
@@ -114,7 +115,7 @@ export const SettingsView: React.FC = () => {
     setIsExporting(true);
     try {
       const token = localStorage.getItem('deadline_radar_token');
-      const res = await fetch('http://localhost:8000/api/v1/availability/export.ics', {
+      const res = await fetch(`${BASE_URL}/availability/export.ics`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -143,7 +144,7 @@ export const SettingsView: React.FC = () => {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/login', { replace: true });
   };
 
   const toggleDay = (day: string) => {
@@ -675,7 +676,7 @@ export const SettingsView: React.FC = () => {
                     {user?.full_name || 'Active Workspace User'}
                   </h3>
                   <p className="font-body-md text-body-md text-ink-secondary mt-0.5">
-                    {user?.email || 'authenticated@deadlineradar.com'}
+                    {user?.email || 'No email registered'}
                   </p>
                   <div className="mt-space-sm inline-flex items-center gap-space-xs text-ink-muted font-label-md text-label-md">
                     <span className="material-symbols-outlined text-[14px]">event_repeat</span>

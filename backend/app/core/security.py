@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 import bcrypt
-from jose import JWTError, jwt
+from jose import ExpiredSignatureError, JWTError, jwt
 
 from app.core.config import settings
 from app.core.errors import UnauthorizedException
@@ -46,5 +46,7 @@ def decode_access_token(token: str) -> Dict[str, Any]:
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         return payload
+    except ExpiredSignatureError:
+        raise UnauthorizedException(message="Token has expired", code="EXPIRED_TOKEN")
     except JWTError:
-        raise UnauthorizedException(message="Invalid or expired token", code="INVALID_TOKEN")
+        raise UnauthorizedException(message="Invalid token", code="INVALID_TOKEN")

@@ -89,7 +89,7 @@ export const SignupView: React.FC = () => {
               required
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              placeholder="Dr. Eleanor Vance"
+              placeholder="Jane Doe"
               className="bg-surface border border-border-hairline px-space-md py-space-xs font-body-md text-body-md text-ink-primary focus:outline-none focus:border-ink-primary transition-colors"
             />
           </div>
@@ -108,7 +108,7 @@ export const SignupView: React.FC = () => {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="elena@university.edu"
+              placeholder="researcher@university.edu"
               className="bg-surface border border-border-hairline px-space-md py-space-xs font-body-md text-body-md text-ink-primary focus:outline-none focus:border-ink-primary transition-colors"
             />
           </div>

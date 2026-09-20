@@ -1,9 +1,10 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { AppShell } from './components/layout/AppShell';
 import { ProtectedRoute, PublicOnlyRoute } from './components/layout/ProtectedRoute';
 import { useAuthStore } from './store/useAuthStore';
+import { queryClient } from './services/queryClient';
 
 import { ProductView } from './pages/ProductView';
 import { LoginView } from './pages/LoginView';
@@ -22,15 +23,6 @@ import { PrioritiesView } from './pages/PrioritiesView';
 import { InsightsView } from './pages/InsightsView';
 import { SettingsView } from './pages/SettingsView';
 import { NotFoundView } from './pages/NotFoundView';
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      retry: 1,
-    },
-  },
-});
 
 export const App: React.FC = () => {
   const checkAuth = useAuthStore((state) => state.checkAuth);
@@ -61,10 +53,10 @@ export const App: React.FC = () => {
               </PublicOnlyRoute>
             }
           />
-          <Route path="/onboarding" element={<OnboardingView />} />
 
           {/* Authenticated / App Shell Workspace */}
           <Route element={<ProtectedRoute />}>
+            <Route path="/onboarding" element={<OnboardingView />} />
             <Route element={<AppShell />}>
               <Route path="/today" element={<TodayView />} />
               <Route path="/radar" element={<RadarView />} />
@@ -73,6 +65,7 @@ export const App: React.FC = () => {
               <Route path="/work/:id" element={<WorkDetailView />} />
               <Route path="/work/new" element={<AddWorkView />} />
               <Route path="/work/add" element={<Navigate to="/work/new" replace />} />
+              <Route path="/add-work" element={<Navigate to="/work/new" replace />} />
               <Route path="/planning" element={<PlanningView />} />
               <Route path="/timeline" element={<TimelineView />} />
               <Route path="/calendar" element={<CalendarView />} />

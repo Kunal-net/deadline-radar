@@ -1,4 +1,11 @@
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+export const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+
+type AuthFailureHandler = () => void;
+let onAuthFailure: AuthFailureHandler | null = null;
+
+export function registerAuthFailureHandler(handler: AuthFailureHandler) {
+  onAuthFailure = handler;
+}
 
 export class ApiError extends Error {
   code?: string;
@@ -32,9 +39,19 @@ export async function apiRequest<T>(
   });
 
   if (!response.ok) {
-    if (response.status === 401 && token) {
-      localStorage.removeItem('deadline_radar_token');
+    if (response.status === 401) {
+      if (!endpoint.includes('/auth/login')) {
+        localStorage.removeItem('deadline_radar_token');
+        if (onAuthFailure) {
+          try {
+            onAuthFailure();
+          } catch {
+            // Ignore error during failure handling
+          }
+        }
+      }
     }
+
     let errorData: { error?: { code?: string; message?: string; details?: unknown } } = {};
     try {
       errorData = await response.json();

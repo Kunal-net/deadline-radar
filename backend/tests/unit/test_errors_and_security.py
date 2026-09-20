@@ -37,6 +37,16 @@ def test_invalid_jwt_token():
     assert exc_info.value.code == "INVALID_TOKEN"
 
 
+def test_expired_jwt_token():
+    from datetime import timedelta
+    payload = {"sub": "usr_test_123", "email": "test@example.com"}
+    expired_token = create_access_token(payload, expires_delta=timedelta(seconds=-10))
+    with pytest.raises(UnauthorizedException) as exc_info:
+        decode_access_token(expired_token)
+    assert exc_info.value.code == "EXPIRED_TOKEN"
+    assert exc_info.value.status_code == 401
+
+
 def test_custom_app_exceptions():
     nf = NotFoundException("Item wi_123 not found", code="ITEM_NOT_FOUND")
     assert nf.status_code == 404
