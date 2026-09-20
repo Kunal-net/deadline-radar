@@ -106,13 +106,23 @@ class EffortEstimationRequest(BaseModel):
         return t.strip()
 
 
-class GeminiEffortExtraction(BaseModel):
+class EffortEstimationModelOutput(BaseModel):
+    """Provider-neutral schema for the structured AI model output for effort estimation.
+
+    Used by GroqProvider, GeminiProvider, and any future provider to validate
+    the raw JSON returned by the model before deterministic backend calculations.
+    """
+
     baseline_estimated_hours: float = Field(..., gt=0.0, le=200.0)
     confidence_score: float = Field(..., ge=0.0, le=1.0)
     confidence_level: str = "medium"  # low, medium, high
     major_factors: List[str] = Field(default_factory=list)
     estimation_rationale: str = Field(..., min_length=3)
     complexity_rating: Optional[str] = "moderate"
+
+
+# Backward-compatible alias — will be removed in a future cleanup once all references are migrated.
+GeminiEffortExtraction = EffortEstimationModelOutput
 
 
 class EffortEstimationResponse(BaseModel):

@@ -9,6 +9,7 @@ from app.services.ai.provider import (
     BaseAIProvider,
     ClaudeProvider,
     GeminiProvider,
+    GroqProvider,
     MockAIProvider,
     get_ai_provider,
 )
@@ -20,6 +21,7 @@ __all__ = [
     "BaseAIProvider",
     "MockAIProvider",
     "GeminiProvider",
+    "GroqProvider",
     "ClaudeProvider",
     "get_ai_provider",
     "WorkInterpreter",

@@ -20,12 +20,13 @@ from app.core.errors import (
 from app.services.ai.schemas import (
     DecompositionRequest,
     DecompositionResponse,
+    EffortEstimationModelOutput,
     EffortEstimationRequest,
     EffortEstimationResponse,
     ExplanationRequest,
     ExplanationResponse,
     ExtractedSubtask,
-    GeminiEffortExtraction,
+    GeminiEffortExtraction,  # backward-compat alias; do not remove until Gemini tests migrated
     PlanningAssistanceRequest,
     PlanningAssistanceResponse,
     SuggestedUnit,
@@ -665,6 +666,345 @@ class GeminiProvider(BaseAIProvider):
             raise AIValidationException(f"Gemini planning assistance response failed schema validation: {e}")
 
 
+class GroqProvider(BaseAIProvider):
+    """
+    Groq AI Provider — first-class implementation using the OpenAI-compatible
+    Groq Chat Completions API (https://api.groq.com/openai/v1/chat/completions).
+
+    Supports all Deadline Radar AI operations:
+      - interpret_work
+      - decompose_work
+      - estimate_effort  (primary production path)
+      - explain_risk_and_priority
+      - assist_planning
+
+    Zero silent mock fallbacks. Missing or invalid API key surfaces as
+    AIConfigurationException (HTTP 500). Provider errors map to typed exceptions.
+    Deterministic domain calculations (pace factor, uncertainty interval) remain
+    exclusively in the backend — Groq only provides the AI estimate.
+    """
+
+    _GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
+
+    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
+        self.api_key = api_key if api_key is not None else settings.effective_groq_api_key
+        self.model = model or settings.GROQ_MODEL
+
+    async def _call_groq(self, messages: List[Dict[str, str]]) -> Dict[str, Any]:
+        """Make a real authenticated request to the Groq Chat Completions API.
+
+        Requires JSON mode via response_format={"type": "json_object"}.
+        All Groq-specific HTTP errors are mapped to typed AI exceptions.
+        The API key is never included in any exception messages or logs.
+        """
+        if not self.api_key:
+            raise AIConfigurationException(
+                "Groq API key is not configured. Set GROQ_API_KEY in backend/.env (server-side only)."
+            )
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        payload: Dict[str, Any] = {
+            "model": self.model,
+            "messages": messages,
+            "response_format": {"type": "json_object"},
+            "temperature": 0.2,
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=settings.AI_TIMEOUT_SECONDS) as client:
+                resp = await client.post(self._GROQ_ENDPOINT, headers=headers, json=payload)
+        except httpx.TimeoutException:
+            raise AITimeoutException(
+                f"Groq API request timed out after {settings.AI_TIMEOUT_SECONDS}s."
+            )
+        except httpx.RequestError as e:
+            raise AIServiceUnavailableException(
+                f"Failed to communicate with Groq API: network error."
+            )
+
+        if resp.status_code in (401, 403):
+            raise AIConfigurationException(
+                "Groq API authentication failed. Verify GROQ_API_KEY is valid and has required permissions."
+            )
+        elif resp.status_code == 400:
+            err_text = resp.text[:200]
+            raise AIValidationException(f"Groq API rejected request (HTTP 400): {err_text}")
+        elif resp.status_code == 429:
+            raise AIRateLimitException("Groq API rate limit reached. Please wait a moment and retry.")
+        elif resp.status_code >= 500:
+            raise AIServiceUnavailableException(
+                f"Groq API service error (HTTP {resp.status_code}). Retry shortly."
+            )
+        elif resp.status_code != 200:
+            raise AIServiceUnavailableException(
+                f"Groq API unexpected response (HTTP {resp.status_code})."
+            )
+
+        try:
+            data = resp.json()
+            choices = data.get("choices", [])
+            if not choices:
+                raise AIValidationException("Groq API returned empty choices list.")
+            content = choices[0].get("message", {}).get("content", "")
+            if not content:
+                raise AIValidationException("Groq API response choice missing message content.")
+            return json.loads(content)
+        except (json.JSONDecodeError, KeyError, IndexError) as e:
+            raise AIValidationException(
+                f"Failed to parse structured JSON from Groq API response: {e}"
+            )
+
+    async def estimate_effort(self, request: EffortEstimationRequest) -> EffortEstimationResponse:
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are Deadline Radar's calibrated effort estimation advisor. "
+                    "Estimate realistic focused completion hours for tasks based on academic, professional, "
+                    "or engineering domain norms. "
+                    "Respond ONLY with a valid JSON object matching the exact schema provided. "
+                    "Never claim estimates are absolute guarantees."
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    f"Estimate the focused effort required for this work item:\n"
+                    f"Title: {request.effective_title}\n"
+                    f"Category: {request.category}\n"
+                    f"Complexity tier: {request.complexity or 'moderate'}\n"
+                    f"Description / Notes: {request.description or 'None provided'}\n"
+                    f"Subtask count: {request.units_count or 'Unspecified'}\n\n"
+                    "Respond with a JSON object containing EXACTLY these keys:\n"
+                    "- baseline_estimated_hours (float > 0 and <= 200, realistic nominal focused hours, e.g. 3.5)\n"
+                    "- confidence_score (float between 0.1 and 0.99, e.g. 0.78)\n"
+                    "- confidence_level (string: exactly 'low', 'medium', or 'high')\n"
+                    "- major_factors (array of 2-4 strings highlighting specific difficulty drivers, dependencies, or scope uncertainties)\n"
+                    "- estimation_rationale (concise 1-2 sentence explanation of why this duration is appropriate)\n"
+                    "- complexity_rating (string: exactly 'simple', 'moderate', 'complex', or 'massive')\n"
+                ),
+            },
+        ]
+
+        raw_json = await self._call_groq(messages)
+        try:
+            parsed = EffortEstimationModelOutput(**raw_json)
+        except Exception as e:
+            raise AIValidationException(
+                f"Groq effort estimate response failed schema validation: {e}"
+            )
+
+        # Deterministic backend calculations — never delegated to the AI model
+        baseline = round(parsed.baseline_estimated_hours, 1)
+        has_sufficient_data = (request.historical_observations_count or 0) >= 3
+        is_personalized = bool(
+            has_sufficient_data and request.user_pace_factor and request.user_pace_factor > 0
+        )
+        pace = request.user_pace_factor if is_personalized else 1.0
+        adjusted = round(baseline * pace, 1)
+
+        min_hours = max(0.5, round(adjusted * 0.75, 1))
+        max_hours = round(adjusted * 1.35, 1)
+        likely_range = f"{min_hours:.1f}h \u2013 {max_hours:.1f}h"
+
+        major_factors = list(parsed.major_factors)
+        if is_personalized:
+            major_factors.append(
+                f"Personalized pace factor of {pace:.2f}x applied from "
+                f"{request.historical_observations_count} historical observations."
+            )
+        else:
+            major_factors.append(
+                "Cold-start baseline applied (insufficient personal historical observations)."
+            )
+
+        explanation = (
+            f"Estimated {adjusted:.1f}h deep focus (likely range {likely_range}, "
+            f"confidence: {parsed.confidence_level}). "
+            f"{parsed.estimation_rationale} Predictions are probabilistic estimates, not guarantees."
+        )
+
+        return EffortEstimationResponse(
+            baseline_estimated_hours=baseline,
+            user_pace_factor=round(pace, 2),
+            adjusted_estimated_hours=adjusted,
+            min_expected_hours=min_hours,
+            max_expected_hours=max_hours,
+            likely_range=likely_range,
+            confidence_score=round(parsed.confidence_score, 2),
+            confidence_level=parsed.confidence_level,
+            major_factors=major_factors,
+            estimation_source="groq_calibrated",
+            model_metadata=f"Groq-{self.model}-v1.0",
+            estimation_rationale=parsed.estimation_rationale,
+            explanation=explanation,
+            is_personalized=is_personalized,
+            is_guarantee=False,
+        )
+
+    async def interpret_work(self, request: WorkInterpretationRequest) -> WorkInterpretationResponse:
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are Deadline Radar's semantic work intake parser. "
+                    "Extract structured work metadata from freeform user notes. "
+                    "Respond ONLY with a valid JSON object matching the WorkInterpretationResponse schema. "
+                    "NEVER fabricate false certainty."
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    f"Extract work parameters from this natural language text: '{request.text}'. "
+                    f"Context date is: {request.context_date or 'today'}. "
+                    "Respond with a JSON object containing: "
+                    "title (string), description (string or null), "
+                    "category (one of: academic, project, exam_prep, career, administrative, personal), "
+                    "deadline_utc (ISO 8601 UTC timestamp or null), is_hard_deadline (boolean), "
+                    "estimated_hours (float > 0), deliverable (string or null), "
+                    "constraints (array of strings), "
+                    "suggested_subtasks (array of objects with sequence_order int, title string, estimated_hours float), "
+                    "missing_information (array of strings), confidence_score (float between 0.1 and 1.0)."
+                ),
+            },
+        ]
+        raw_json = await self._call_groq(messages)
+        try:
+            return WorkInterpretationResponse(**raw_json)
+        except Exception as e:
+            raise AIValidationException(
+                f"Groq interpretation response failed schema validation: {e}"
+            )
+
+    async def decompose_work(self, request: DecompositionRequest) -> DecompositionResponse:
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are Deadline Radar's task decomposition specialist. "
+                    "Break complex work items into 3 to 6 sequential, manageable atomic subtasks "
+                    "sized between 0.5h and 3.0h each. "
+                    "Respond ONLY with valid JSON."
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    f"Decompose work item '{request.effective_title}' "
+                    f"(Category: {request.category}, Total: {request.estimated_hours}h) "
+                    "into 3-6 sequential work units. "
+                    "Respond with a JSON object containing: "
+                    "suggested_category (string), "
+                    "suggested_units (array of objects each with: sequence_order int, title string, "
+                    "description string or null, estimated_hours float, dependencies array of ints), "
+                    "total_estimated_hours (float), confidence_score (float), "
+                    "reasoning_summary (string), decomposition_notes (string), "
+                    "detected_missing_information (array of strings)."
+                ),
+            },
+        ]
+        raw_json = await self._call_groq(messages)
+        try:
+            return DecompositionResponse(**raw_json)
+        except Exception as e:
+            raise AIValidationException(
+                f"Groq decomposition response failed schema validation: {e}"
+            )
+
+    async def explain_risk_and_priority(self, request: ExplanationRequest) -> ExplanationResponse:
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are Deadline Radar's risk explanation advisor. "
+                    "Explain WHY a specific deadline is risky or why a task has high priority, "
+                    "strictly quoting the provided numbers. "
+                    "Never invent numbers or dates. Keep tone objective, calm, and actionable. "
+                    "Respond ONLY with valid JSON."
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    f"Generate grounded risk and priority explanation for:\n"
+                    f"Title: {request.title}\n"
+                    f"Risk State: {request.risk_state}\n"
+                    f"Risk Ratio: {request.risk_ratio:.2f}\n"
+                    f"Dynamic Priority: {request.dynamic_priority:.1f}/100\n"
+                    f"Remaining Hours: {request.remaining_hours:.1f}h\n"
+                    f"Available Hours: {request.available_hours:.1f}h\n"
+                    f"Days Until Deadline: {request.days_until_deadline}\n"
+                    f"Telemetry Factors: {request.factors}\n\n"
+                    "Respond with a JSON object containing: "
+                    "summary (string), risk_explanation (string), priority_explanation (string), "
+                    "variance_explanation (string or null), "
+                    "actionable_recommendations (array of 2-3 strings), "
+                    "grounded_metrics (object with the provided numeric values)."
+                ),
+            },
+        ]
+        raw_json = await self._call_groq(messages)
+        try:
+            if "grounded_metrics" not in raw_json or not raw_json["grounded_metrics"]:
+                raw_json["grounded_metrics"] = {
+                    "title": request.title,
+                    "risk_state": request.risk_state,
+                    "risk_ratio": request.risk_ratio,
+                    "dynamic_priority": request.dynamic_priority,
+                    "remaining_hours": request.remaining_hours,
+                    "available_hours": request.available_hours,
+                }
+            return ExplanationResponse(**raw_json)
+        except Exception as e:
+            raise AIValidationException(
+                f"Groq explanation response failed schema validation: {e}"
+            )
+
+    async def assist_planning(self, request: PlanningAssistanceRequest) -> PlanningAssistanceResponse:
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are Deadline Radar's daily planning assistant. "
+                    "Evaluate schedule pressure, trade-offs, sequencing, and conflict risks "
+                    "around the deterministic daily plan. "
+                    "Deterministic capacity remains authoritative. "
+                    "Respond ONLY with valid JSON."
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    f"Evaluate daily plan for date {request.date}:\n"
+                    f"Allocated Hours: {request.allocated_hours:.1f}h\n"
+                    f"Available Capacity: {request.available_capacity_hours:.1f}h\n"
+                    f"Top Work Items: {request.top_items}\n"
+                    f"Detected Conflicts: {request.conflicts}\n\n"
+                    "Respond with a JSON object containing: "
+                    "schedule_pressure (one of: 'relaxed', 'balanced', 'overloaded'), "
+                    "advice (string), tradeoffs_summary (string), "
+                    "suggested_adjustments (array of strings), "
+                    "sequencing_recommendations (array of strings), "
+                    "potential_conflicts (array of strings), "
+                    "focus_strategy (string), "
+                    "is_validated_deterministic (boolean, always true)."
+                ),
+            },
+        ]
+        raw_json = await self._call_groq(messages)
+        try:
+            raw_json["is_validated_deterministic"] = True
+            return PlanningAssistanceResponse(**raw_json)
+        except Exception as e:
+            raise AIValidationException(
+                f"Groq planning assistance response failed schema validation: {e}"
+            )
+
+
 class ClaudeProvider(BaseAIProvider):
     """
     Anthropic Claude Provider with deterministic fallback for local testing.
@@ -701,17 +1041,38 @@ class ClaudeProvider(BaseAIProvider):
 
 
 def get_ai_provider() -> BaseAIProvider:
+    """Select and return the configured AI provider.
+
+    Selection priority:
+      1. Explicit AI_PROVIDER setting:
+         - "groq"   → GroqProvider  (primary production provider)
+         - "gemini" → GeminiProvider (legacy, retained for compatibility)
+         - "claude" → ClaudeProvider
+         - "mock"   → MockAIProvider (deterministic, no API key required)
+      2. Auto-detect by available keys (when AI_PROVIDER is not set):
+         GROQ_API_KEY present → GroqProvider
+         GEMINI_API_KEY/GOOGLE_API_KEY present → GeminiProvider
+         Neither → MockAIProvider
+
+    IMPORTANT: When AI_PROVIDER is explicitly set to "groq" and GROQ_API_KEY is
+    missing, GroqProvider will raise AIConfigurationException on the first AI
+    request — it does NOT silently fall back to MockAIProvider.
+    """
     provider_name = (settings.AI_PROVIDER or "").lower()
-    if provider_name == "gemini":
+    if provider_name == "groq":
+        return GroqProvider()
+    elif provider_name == "gemini":
         return GeminiProvider()
     elif provider_name == "claude":
         return ClaudeProvider()
     elif provider_name == "mock":
         return MockAIProvider()
 
-    # Auto-detect Gemini if key is provided and provider wasn't explicitly mock
+    # Auto-detect by available API keys (when AI_PROVIDER is not explicitly set)
+    # Priority: Groq > Gemini > Mock
+    if settings.effective_groq_api_key:
+        return GroqProvider()
     if settings.effective_gemini_api_key:
         return GeminiProvider()
 
     return MockAIProvider()
-

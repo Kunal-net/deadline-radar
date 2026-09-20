@@ -36,12 +36,25 @@ class Settings(BaseSettings):
     ]
 
     # AI Configuration
-    AI_PROVIDER: str = "mock"  # "gemini" | "claude" | "mock"
+    AI_PROVIDER: str = "mock"  # "groq" | "gemini" | "claude" | "mock"
+    # Groq (primary)
+    GROQ_API_KEY: Optional[str] = None
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    # Gemini (legacy, retained for backward compatibility)
     GEMINI_API_KEY: Optional[str] = None
     GOOGLE_API_KEY: Optional[str] = None  # Standard alias for Google Gemini API key
     GEMINI_MODEL: str = "gemini-1.5-flash"
+    # Anthropic Claude
     ANTHROPIC_API_KEY: Optional[str] = None
     AI_TIMEOUT_SECONDS: float = 15.0
+
+    @property
+    def effective_groq_api_key(self) -> Optional[str]:
+        return self.GROQ_API_KEY
+
+    @property
+    def is_groq_configured(self) -> bool:
+        return bool(self.GROQ_API_KEY)
 
     @property
     def effective_gemini_api_key(self) -> Optional[str]:
