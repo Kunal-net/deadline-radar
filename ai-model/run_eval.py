@@ -16,8 +16,8 @@ backend_path = Path(__file__).resolve().parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.services.ai.ai_service import AIService
-from app.services.ai.provider import MockAIProvider
+from app.services.ai.ai_service import AIService  # type: ignore
+from app.services.ai.provider import MockAIProvider  # type: ignore
 
 
 async def run_evaluation():
