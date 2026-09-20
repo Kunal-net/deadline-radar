@@ -1,20 +1,20 @@
 import React, { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { SubNavigation } from '../components/layout/SubNavigation';
-import { MOCK_WORK_ITEMS, MOCK_CAPACITY_METRIC } from '../mocks/mockData';
-import { WorkItem } from '../services/apiTypes';
-import { useAppStore } from '../store/useAppStore';
-import { useWorkItems } from '../services/apiHooks';
+import { useWorkItems, useCreateWorkItem, useDashboardSummary, useActiveSessionTracking } from '../services/apiHooks';
 
 export const WorkListView: React.FC = () => {
   const navigate = useNavigate();
-  const { startSession } = useAppStore();
+  const { startSession } = useActiveSessionTracking();
   const [naturalInput, setNaturalInput] = useState('');
-  const { data: fetchedItems } = useWorkItems();
-  const [localItems, setLocalItems] = useState<WorkItem[]>([]);
+  const { data: fetchedItems, isLoading, isError, refetch } = useWorkItems();
+  const { data: dashboardSummary } = useDashboardSummary();
+  const createMutation = useCreateWorkItem();
+
   const items = useMemo(() => {
-    return [...localItems, ...(fetchedItems || MOCK_WORK_ITEMS)];
-  }, [localItems, fetchedItems]);
+    return fetchedItems || [];
+  }, [fetchedItems]);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('ALL');
   const [sortBy, setSortBy] = useState<'DEADLINE' | 'PRIORITY' | 'EFFORT'>('DEADLINE');
@@ -29,7 +29,7 @@ export const WorkListView: React.FC = () => {
             ? true
             : filterCategory === 'CRITICAL'
             ? item.riskLevel === 'CRITICAL'
-            : item.category === filterCategory;
+            : item.category.toUpperCase() === filterCategory.toUpperCase();
 
         const matchesSearch =
           !searchQuery.trim() ||
@@ -54,10 +54,10 @@ export const WorkListView: React.FC = () => {
   }, [items, filterCategory, searchQuery, sortBy]);
 
   const totalRemainingHours = useMemo(() => {
-    return items.reduce((sum, i) => sum + i.remainingEffortHours, 0);
+    return items.reduce((sum, i) => sum + (i.remainingEffortHours || 0), 0);
   }, [items]);
 
-  const handleQuickAdd = (e: React.FormEvent) => {
+  const handleQuickAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = naturalInput.trim();
     if (!trimmed) return;
@@ -66,31 +66,37 @@ export const WorkListView: React.FC = () => {
     const match = trimmed.match(/(\d+(?:\.\d+)?)\s*(?:hour|hr|h)/i);
     const parsedEffort = match ? parseFloat(match[1]) : 2.0;
 
-    const newItem: WorkItem = {
-      id: `wi_${Date.now()}`,
-      title: trimmed,
-      description: 'Parsed deliverable appended to Work ledger.',
-      category: 'PROJECT',
-      status: 'IN_PROGRESS',
-      riskLevel: 'WATCH',
-      deadlineUtc: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-      isHardDeadline: false,
-      estimatedEffortHours: parsedEffort,
-      remainingEffortHours: parsedEffort,
-      actualLoggedHours: 0.0,
-      dynamicPriorityScore: 78,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    const targetDate = new Date();
+    targetDate.setDate(targetDate.getDate() + 3);
 
-    setLocalItems((prev) => [newItem, ...prev]);
-    setNaturalInput('');
-    setFeedbackNotice(`Appended "${trimmed}" (${parsedEffort}h remaining) to active commitments.`);
-    setTimeout(() => setFeedbackNotice(null), 4000);
+    try {
+      await createMutation.mutateAsync({
+        title: trimmed,
+        description: 'Parsed deliverable appended to Work ledger.',
+        category: 'PROJECT',
+        status: 'TODO',
+        estimatedEffortHours: parsedEffort,
+        remainingEffortHours: parsedEffort,
+        actualLoggedHours: 0.0,
+        deadlineUtc: targetDate.toISOString(),
+        isHardDeadline: false,
+      });
+
+      setNaturalInput('');
+      setFeedbackNotice(`Appended "${trimmed}" (${parsedEffort}h remaining) to active commitments.`);
+      setTimeout(() => setFeedbackNotice(null), 4000);
+    } catch (err: any) {
+      setFeedbackNotice(`Failed to add commitment: ${err?.message || 'Server error'}`);
+      setTimeout(() => setFeedbackNotice(null), 5000);
+    }
   };
 
-  const handleStartFocus = (title: string, id: string) => {
-    startSession(title, id);
+  const handleStartFocus = async (title: string, id: string) => {
+    try {
+      await startSession({ work_item_id: id, notes: title });
+    } catch (err) {
+      console.warn('Could not start tracking session:', err);
+    }
     navigate('/today');
   };
 
@@ -101,9 +107,9 @@ export const WorkListView: React.FC = () => {
         items={[
           { label: 'Work Ledger', path: '/work', badge: `${items.length}` },
           { label: 'Priorities', path: '/priorities', indicator: true },
-          { label: 'Work Detail', path: '/work/wi_ml_01' },
+          { label: 'Add Work', path: '/work/add' },
         ]}
-        statusText={`Evaluated for Sprint Wk ${MOCK_CAPACITY_METRIC.weekNumber}`}
+        statusText="Active Operating Schedule · Deterministic Engine"
       />
 
       {/* Workspace Header */}
@@ -114,7 +120,7 @@ export const WorkListView: React.FC = () => {
               Work
             </h1>
             <Link
-              to="/work/new"
+              to="/work/add"
               className="inline-flex items-center gap-space-xs bg-ink-primary hover:bg-accent-terracotta text-canvas-paper px-space-md py-space-xs transition-colors duration-200"
             >
               <span className="material-symbols-outlined text-[16px] leading-none text-canvas-paper">
@@ -135,7 +141,6 @@ export const WorkListView: React.FC = () => {
                 { id: 'ALL', label: `All (${items.length})` },
                 { id: 'ACADEMIC', label: 'Academic' },
                 { id: 'PROJECT', label: 'Backend & Dev' },
-                { id: 'RESEARCH', label: 'Design & Research' },
                 { id: 'CRITICAL', label: 'High Risk' },
               ].map((pill) => (
                 <button
@@ -225,17 +230,17 @@ export const WorkListView: React.FC = () => {
               Available this week:
             </span>
             <span className="font-headline-md text-headline-md text-ink-primary font-semibold">
-              {MOCK_CAPACITY_METRIC.availableFocusHours} hrs
+              {dashboardSummary?.weekCapacityHours ? `${dashboardSummary.weekCapacityHours} hrs` : '28.0 hrs'}
             </span>
           </div>
           <div className="h-4 w-px bg-border-hairline hidden sm:block" />
           <div className="flex items-center gap-space-xs">
             <span className="w-2 h-2 rounded-full bg-accent-terracotta inline-block" />
             <span className="font-label-md text-label-md uppercase tracking-wider text-ink-muted">
-              Status:
+              Capacity State:
             </span>
-            <span className="font-body-md text-body-md font-semibold text-ink-primary">
-              On schedule (+{MOCK_CAPACITY_METRIC.netBufferHours.toFixed(1)}h buffer)
+            <span className="font-body-md text-body-md font-semibold text-ink-primary uppercase">
+              {dashboardSummary?.capacityStatus || 'BALANCED'}
             </span>
           </div>
         </div>
@@ -244,6 +249,13 @@ export const WorkListView: React.FC = () => {
       {/* Main Active Work Section (Clean, Open List) */}
       <section className="w-full px-margin-mobile md:px-margin-tablet lg:px-margin py-space-md">
         <div className="max-w-7xl mx-auto flex flex-col">
+          {/* Feedback notice if any */}
+          {feedbackNotice && (
+            <div className="mb-4 p-3 bg-surface-cream border border-border-hairline text-ink-primary font-body-md text-sm">
+              {feedbackNotice}
+            </div>
+          )}
+
           {/* Ledger Header */}
           <div
             className="hidden md:grid md:grid-cols-12 pb-space-xs font-label-md text-label-md text-ink-muted uppercase tracking-wider"
@@ -257,21 +269,38 @@ export const WorkListView: React.FC = () => {
 
           {/* Deliverables List */}
           <div className="flex flex-col">
-            {filteredAndSortedItems.length === 0 ? (
-              <div className="py-space-xl text-center flex flex-col items-center">
-                <span className="font-headline-md text-headline-md text-ink-primary">
-                  No work items match your filter.
-                </span>
+            {isLoading ? (
+              <div className="py-space-xl text-center text-ink-muted font-label-md">
+                Loading active commitments from ledger...
+              </div>
+            ) : isError ? (
+              <div className="py-space-xl text-center flex flex-col items-center gap-2">
+                <span className="text-status-alert font-body-md">Unable to connect to work service.</span>
                 <button
                   type="button"
-                  onClick={() => {
-                    setFilterCategory('ALL');
-                    setSearchQuery('');
-                  }}
-                  className="mt-space-sm font-label-lg text-label-lg text-accent-terracotta underline"
+                  onClick={() => refetch()}
+                  className="px-space-md py-1 bg-ink-primary text-canvas-paper font-label-md text-xs"
                 >
-                  Clear all filters
+                  Retry
                 </button>
+              </div>
+            ) : filteredAndSortedItems.length === 0 ? (
+              <div className="py-space-2xl text-center flex flex-col items-center justify-center gap-space-sm border-b border-border-hairline">
+                <span className="material-symbols-outlined text-[36px] text-ink-muted">inbox</span>
+                <h3 className="font-headline-md text-headline-md text-ink-primary font-semibold">
+                  No active commitments found
+                </h3>
+                <p className="font-body-md text-body-md text-ink-secondary max-w-md">
+                  {searchQuery || filterCategory !== 'ALL'
+                    ? 'No items match your active search and category filters. Try clearing your filters.'
+                    : 'Your ledger is completely clear. Capture your first deliverable using the intake input below or the Add Work workflow.'}
+                </p>
+                <Link
+                  to="/work/add"
+                  className="mt-space-xs px-space-md py-2 bg-ink-primary text-canvas-paper hover:bg-accent-terracotta transition-colors font-label-md text-label-md inline-block"
+                >
+                  Structured Add Work
+                </Link>
               </div>
             ) : (
               filteredAndSortedItems.map((item) => {

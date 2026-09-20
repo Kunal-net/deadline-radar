@@ -104,27 +104,59 @@ export const AddWorkView: React.FC = () => {
     }
   };
 
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
   const handleConfirm = async () => {
-    setConfirmed(true);
+    setErrorMessage(null);
     try {
-      const targetDate = new Date();
-      targetDate.setDate(targetDate.getDate() + 2); // default 2 days out
+      const checkedUnits = subtasks
+        .filter((st) => st.checked)
+        .map((st) => {
+          const minsMatch = st.duration.match(/(\d+)/);
+          const mins = minsMatch ? parseInt(minsMatch[1], 10) : 60;
+          return {
+            title: st.title,
+            estimated_hours: Math.max(0.1, Number((mins / 60).toFixed(2))),
+          };
+        });
+
+      let deadline = aiInterpretation?.deadline_utc;
+      if (!deadline || isNaN(new Date(deadline).getTime())) {
+        const targetDate = new Date();
+        targetDate.setDate(targetDate.getDate() + 2);
+        deadline = targetDate.toISOString();
+      }
+
+      const rawCat = (aiInterpretation?.category || 'academic').toLowerCase();
+      const cat = rawCat.includes('proj')
+        ? 'project'
+        : rawCat.includes('exam')
+        ? 'exam_prep'
+        : rawCat.includes('career')
+        ? 'career'
+        : rawCat.includes('personal')
+        ? 'personal'
+        : 'academic';
+
       await createMutation.mutateAsync({
         title: displayTitle,
-        category: 'ACADEMIC',
+        category: cat.toUpperCase() as any,
         estimatedEffortHours: aiInterpretation?.estimated_hours || 3.5,
         remainingEffortHours: aiInterpretation?.estimated_hours || 3.5,
         actualLoggedHours: 0,
-        deadlineUtc: targetDate.toISOString(),
-        isHardDeadline: true,
+        deadlineUtc: deadline,
+        isHardDeadline: aiInterpretation?.is_hard_deadline ?? true,
         riskLevel: 'SAFE',
+        initial_units: checkedUnits.length > 0 ? checkedUnits : undefined,
       });
-    } catch {
-      // Handled gracefully in mutation
+
+      setConfirmed(true);
+      setTimeout(() => {
+        navigate('/work');
+      }, 300);
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Failed to persist work item. Please verify details and retry.');
     }
-    setTimeout(() => {
-      navigate('/work');
-    }, 600);
   };
 
   const toggleSubtask = (id: string) => {
@@ -490,6 +522,13 @@ export const AddWorkView: React.FC = () => {
               )}
 
 
+              {/* Error Message */}
+              {errorMessage && (
+                <div className="p-3 bg-accent-terracotta/10 border border-accent-terracotta/30 text-accent-terracotta font-body-md text-sm">
+                  {errorMessage}
+                </div>
+              )}
+
               {/* Action Controls */}
               <div className="flex flex-wrap items-center justify-between gap-space-md pt-space-xs">
                 <div className="flex flex-wrap items-center gap-space-sm">
@@ -497,9 +536,10 @@ export const AddWorkView: React.FC = () => {
                     variant="primary"
                     size="md"
                     onClick={handleConfirm}
+                    disabled={createMutation.isPending || confirmed}
                     icon={<span className="material-symbols-outlined text-[16px]">arrow_forward</span>}
                   >
-                    {confirmed ? 'Scheduling Commitment...' : 'Confirm & Schedule Block'}
+                    {createMutation.isPending || confirmed ? 'Scheduling Commitment...' : 'Confirm & Schedule Block'}
                   </Button>
                   <Button variant="outline" size="md" onClick={() => navigate('/work')}>
                     Edit Parameters
