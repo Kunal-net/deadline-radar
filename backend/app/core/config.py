@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     AI_PROVIDER: str = "mock"  # "groq" | "gemini" | "claude" | "mock"
     # Groq (primary)
     GROQ_API_KEY: Optional[str] = None
-    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    GROQ_MODEL: str = "groq/compound"  # Also: llama-3.3-70b-versatile, llama-3.1-8b-instant
     # Gemini (legacy, retained for backward compatibility)
     GEMINI_API_KEY: Optional[str] = None
     GOOGLE_API_KEY: Optional[str] = None  # Standard alias for Google Gemini API key
